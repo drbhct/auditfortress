@@ -30,6 +30,7 @@ const navigationItems = [
   { path: '/superadmin/organizations', label: 'Organizations', icon: BuildingOfficeIcon },
   { path: '/superadmin/users', label: 'Global Users', icon: UsersIcon },
   { path: '/superadmin/templates', label: 'Templates', icon: DocumentTextIcon },
+  { path: '/documents', label: 'Documents', icon: DocumentTextIcon },
   { path: '/superadmin/billing', label: 'Billing', icon: CreditCardIcon },
   { path: '/superadmin/analytics', label: 'Analytics', icon: ChartBarIcon },
   { path: '/superadmin/ai', label: 'AI Management', icon: CpuChipIcon },
@@ -89,7 +90,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
                 to={item.path}
                 className={cn(
                   'flex items-center px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors',
-                  isActive && 'bg-gray-800 text-white border-l-4 border-blue-500',
+                  isActive && 'bg-gray-800 text-white border-l-4 border-blue-500'
                 )}
               >
                 <Icon className="h-5 w-5 mr-3" />

@@ -1,334 +1,462 @@
-// Validation utility functions and schemas
+/**
+ * Comprehensive input validation utilities
+ * Provides sanitization, validation, and security checks
+ */
 
-export interface ValidationRule {
-  required?: boolean | string
-  minLength?: number | { value: number; message: string }
-  maxLength?: number | { value: number; message: string }
-  pattern?: RegExp | { value: RegExp; message: string }
-  min?: number | { value: number; message: string }
-  max?: number | { value: number; message: string }
-  custom?: (value: any) => boolean | string
+// Email validation regex
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+
+// Password strength requirements
+const PASSWORD_REQUIREMENTS = {
+  minLength: 8,
+  maxLength: 128,
+  requireUppercase: true,
+  requireLowercase: true,
+  requireNumbers: true,
+  requireSpecialChars: true,
+  specialChars: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/,
 }
+
+// XSS prevention patterns
+const XSS_PATTERNS = [
+  /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+  /javascript:/gi,
+  /on\w+\s*=/gi,
+  /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
+  /<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi,
+  /<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi,
+]
+
+// SQL injection patterns
+const SQL_INJECTION_PATTERNS = [
+  /('|(\\')|(;)|(\-\-)|(\s+or\s+)|(\s+and\s+))/gi,
+  /(union\s+select)/gi,
+  /(drop\s+table)/gi,
+  /(delete\s+from)/gi,
+  /(insert\s+into)/gi,
+  /(update\s+set)/gi,
+]
 
 export interface ValidationResult {
-  isValid: boolean
+  valid: boolean
   errors: string[]
+  warnings?: string[]
 }
 
-// Common validation patterns
-export const ValidationPatterns = {
-  email: {
-    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-    message: 'Please enter a valid email address',
-  },
-  phone: {
-    value: /^[\+]?[1-9][\d]{0,15}$/,
-    message: 'Please enter a valid phone number',
-  },
-  url: {
-    value: /^https?:\/\/.+\..+/,
-    message: 'Please enter a valid URL',
-  },
-  password: {
-    value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-    message:
-      'Password must be at least 8 characters with uppercase, lowercase, number, and special character',
-  },
-  strongPassword: {
-    value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/,
-    message:
-      'Password must be at least 12 characters with uppercase, lowercase, number, and special character',
-  },
-  alphanumeric: {
-    value: /^[a-zA-Z0-9]+$/,
-    message: 'Only letters and numbers are allowed',
-  },
-  numeric: {
-    value: /^\d+$/,
-    message: 'Only numbers are allowed',
-  },
-  alpha: {
-    value: /^[a-zA-Z]+$/,
-    message: 'Only letters are allowed',
-  },
-  slug: {
-    value: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-    message: 'Only lowercase letters, numbers, and hyphens are allowed',
-  },
-  zipCode: {
-    value: /^\d{5}(-\d{4})?$/,
-    message: 'Please enter a valid ZIP code',
-  },
-  creditCard: {
-    value:
-      /^(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})$/,
-    message: 'Please enter a valid credit card number',
+export interface PasswordValidationResult extends ValidationResult {
+  strength: 'weak' | 'medium' | 'strong' | 'very-strong'
+  score: number
+}
+
+/**
+ * Sanitize input to prevent XSS and other attacks
+ */
+export const sanitizeInput = (input: string): string => {
+  if (typeof input !== 'string') {
+    return ''
   }
+
+  let sanitized = input.trim()
+
+  // Remove XSS patterns
+  XSS_PATTERNS.forEach(pattern => {
+    sanitized = sanitized.replace(pattern, '')
+  })
+
+  // Remove SQL injection patterns
+  SQL_INJECTION_PATTERNS.forEach(pattern => {
+    sanitized = sanitized.replace(pattern, '')
+  })
+
+  // Remove HTML tags
+  sanitized = sanitized.replace(/<[^>]*>/g, '')
+
+  // Remove null bytes
+  sanitized = sanitized.replace(/\0/g, '')
+
+  return sanitized
 }
 
-// Validation function
-export const validateField = (value: any, rules: ValidationRule): ValidationResult => {
+/**
+ * Validate email address
+ */
+export const validateEmail = (email: string): ValidationResult => {
   const errors: string[] = []
+  const warnings: string[] = []
 
-  // Required validation
-  if (rules.required) {
-    const isEmpty =
-      value === null ||
-      value === undefined ||
-      value === '' ||
-      (Array.isArray(value) && value.length === 0)
-
-    if (isEmpty) {
-      const message = typeof rules.required === 'string' ? rules.required : 'This field is required'
-      errors.push(message)
-      return { isValid: false, errors }
-    }
+  if (!email) {
+    errors.push('Email is required')
+    return { valid: false, errors, warnings }
   }
 
-  // Skip other validations if value is empty and not required
-  if (!value && !rules.required) {
-    return { isValid: true, errors: [] }
+  const sanitizedEmail = sanitizeInput(email)
+
+  if (sanitizedEmail !== email) {
+    warnings.push('Email contained potentially unsafe characters')
   }
 
-  // String length validations
-  if (typeof value === 'string') {
-    if (rules.minLength) {
-      const minLength =
-        typeof rules.minLength === 'number' ? rules.minLength : rules.minLength.value
-      const message =
-        typeof rules.minLength === 'number'
-          ? `Must be at least ${minLength} characters`
-          : rules.minLength.message
-
-      if (value.length < minLength) {
-        errors.push(message)
-      }
-    }
-
-    if (rules.maxLength) {
-      const maxLength =
-        typeof rules.maxLength === 'number' ? rules.maxLength : rules.maxLength.value
-      const message =
-        typeof rules.maxLength === 'number'
-          ? `Must be no more than ${maxLength} characters`
-          : rules.maxLength.message
-
-      if (value.length > maxLength) {
-        errors.push(message)
-      }
-    }
+  if (!EMAIL_REGEX.test(sanitizedEmail)) {
+    errors.push('Please enter a valid email address')
   }
 
-  // Pattern validation
-  if (rules.pattern) {
-    const pattern =
-      typeof rules.pattern === 'object' && 'value' in rules.pattern
-        ? rules.pattern.value
-        : (rules.pattern as RegExp)
-    const message =
-      typeof rules.pattern === 'object' && 'message' in rules.pattern
-        ? rules.pattern.message
-        : 'Invalid format'
-
-    if (!pattern.test(String(value))) {
-      errors.push(message)
-    }
-  }
-
-  // Numeric validations
-  if (typeof value === 'number' || !isNaN(Number(value))) {
-    const numValue = Number(value)
-
-    if (rules.min) {
-      const min = typeof rules.min === 'number' ? rules.min : rules.min.value
-      const message = typeof rules.min === 'number' ? `Must be at least ${min}` : rules.min.message
-
-      if (numValue < min) {
-        errors.push(message)
-      }
-    }
-
-    if (rules.max) {
-      const max = typeof rules.max === 'number' ? rules.max : rules.max.value
-      const message =
-        typeof rules.max === 'number' ? `Must be no more than ${max}` : rules.max.message
-
-      if (numValue > max) {
-        errors.push(message)
-      }
-    }
-  }
-
-  // Custom validation
-  if (rules.custom) {
-    const result = rules.custom(value)
-    if (result !== true) {
-      const message = typeof result === 'string' ? result : 'Invalid value'
-      errors.push(message)
-    }
+  if (sanitizedEmail.length > 254) {
+    errors.push('Email address is too long')
   }
 
   return {
-    isValid: errors.length === 0,
+    valid: errors.length === 0,
     errors,
+    warnings,
   }
 }
 
-// Validate multiple fields
+/**
+ * Validate password strength
+ */
+export const validatePassword = (password: string): PasswordValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+  let score = 0
+
+  if (!password) {
+    errors.push('Password is required')
+    return { valid: false, errors, warnings, strength: 'weak', score: 0 }
+  }
+
+  // Length check
+  if (password.length < PASSWORD_REQUIREMENTS.minLength) {
+    errors.push(`Password must be at least ${PASSWORD_REQUIREMENTS.minLength} characters long`)
+  } else {
+    score += 1
+  }
+
+  if (password.length > PASSWORD_REQUIREMENTS.maxLength) {
+    errors.push(`Password must be no more than ${PASSWORD_REQUIREMENTS.maxLength} characters long`)
+  }
+
+  // Character type checks
+  if (PASSWORD_REQUIREMENTS.requireUppercase && !/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter')
+  } else if (/[A-Z]/.test(password)) {
+    score += 1
+  }
+
+  if (PASSWORD_REQUIREMENTS.requireLowercase && !/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter')
+  } else if (/[a-z]/.test(password)) {
+    score += 1
+  }
+
+  if (PASSWORD_REQUIREMENTS.requireNumbers && !/\d/.test(password)) {
+    errors.push('Password must contain at least one number')
+  } else if (/\d/.test(password)) {
+    score += 1
+  }
+
+  if (
+    PASSWORD_REQUIREMENTS.requireSpecialChars &&
+    !PASSWORD_REQUIREMENTS.specialChars.test(password)
+  ) {
+    errors.push('Password must contain at least one special character')
+  } else if (PASSWORD_REQUIREMENTS.specialChars.test(password)) {
+    score += 1
+  }
+
+  // Common password checks
+  const commonPasswords = [
+    'password',
+    '123456',
+    '123456789',
+    'qwerty',
+    'abc123',
+    'password123',
+    'admin',
+    'letmein',
+    'welcome',
+    'monkey',
+    '1234567890',
+  ]
+
+  if (commonPasswords.includes(password.toLowerCase())) {
+    errors.push('Password is too common. Please choose a more unique password')
+    score = 0
+  }
+
+  // Determine strength
+  let strength: 'weak' | 'medium' | 'strong' | 'very-strong' = 'weak'
+  if (score >= 5) {
+    strength = 'very-strong'
+  } else if (score >= 4) {
+    strength = 'strong'
+  } else if (score >= 3) {
+    strength = 'medium'
+  }
+
+  // Additional length bonus
+  if (password.length >= 12) {
+    score += 1
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    strength,
+    score: Math.min(score, 6),
+  }
+}
+
+/**
+ * Validate name fields (first name, last name, etc.)
+ */
+export const validateName = (name: string, fieldName: string = 'Name'): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (!name) {
+    errors.push(`${fieldName} is required`)
+    return { valid: false, errors, warnings }
+  }
+
+  const sanitizedName = sanitizeInput(name)
+
+  if (sanitizedName !== name) {
+    warnings.push(`${fieldName} contained potentially unsafe characters`)
+  }
+
+  if (sanitizedName.length < 2) {
+    errors.push(`${fieldName} must be at least 2 characters long`)
+  }
+
+  if (sanitizedName.length > 50) {
+    errors.push(`${fieldName} must be no more than 50 characters long`)
+  }
+
+  // Check for valid characters (letters, spaces, hyphens, apostrophes)
+  if (!/^[a-zA-Z\s\-']+$/.test(sanitizedName)) {
+    errors.push(`${fieldName} can only contain letters, spaces, hyphens, and apostrophes`)
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  }
+}
+
+/**
+ * Validate organization name
+ */
+export const validateOrganizationName = (name: string): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (!name) {
+    errors.push('Organization name is required')
+    return { valid: false, errors, warnings }
+  }
+
+  const sanitizedName = sanitizeInput(name)
+
+  if (sanitizedName !== name) {
+    warnings.push('Organization name contained potentially unsafe characters')
+  }
+
+  if (sanitizedName.length < 2) {
+    errors.push('Organization name must be at least 2 characters long')
+  }
+
+  if (sanitizedName.length > 100) {
+    errors.push('Organization name must be no more than 100 characters long')
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  }
+}
+
+/**
+ * Validate document title
+ */
+export const validateDocumentTitle = (title: string): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (!title) {
+    errors.push('Document title is required')
+    return { valid: false, errors, warnings }
+  }
+
+  const sanitizedTitle = sanitizeInput(title)
+
+  if (sanitizedTitle !== title) {
+    warnings.push('Document title contained potentially unsafe characters')
+  }
+
+  if (sanitizedTitle.length < 3) {
+    errors.push('Document title must be at least 3 characters long')
+  }
+
+  if (sanitizedTitle.length > 200) {
+    errors.push('Document title must be no more than 200 characters long')
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  }
+}
+
+/**
+ * Validate template content
+ */
+export const validateTemplateContent = (content: string): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (!content) {
+    errors.push('Template content is required')
+    return { valid: false, errors, warnings }
+  }
+
+  const sanitizedContent = sanitizeInput(content)
+
+  if (sanitizedContent !== content) {
+    warnings.push('Template content contained potentially unsafe characters')
+  }
+
+  if (sanitizedContent.length < 10) {
+    errors.push('Template content must be at least 10 characters long')
+  }
+
+  if (sanitizedContent.length > 100000) {
+    errors.push('Template content is too long (maximum 100,000 characters)')
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  }
+}
+
+/**
+ * Validate URL
+ */
+export const validateUrl = (url: string): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  if (!url) {
+    errors.push('URL is required')
+    return { valid: false, errors, warnings }
+  }
+
+  try {
+    const urlObj = new URL(url)
+
+    // Check for safe protocols
+    if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      errors.push('URL must use HTTP or HTTPS protocol')
+    }
+
+    // Check for suspicious patterns
+    if (urlObj.hostname.includes('localhost') || urlObj.hostname.includes('127.0.0.1')) {
+      warnings.push('URL points to localhost')
+    }
+  } catch {
+    errors.push('Please enter a valid URL')
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  }
+}
+
+/**
+ * Validate file upload
+ */
+export const validateFileUpload = (
+  file: File,
+  options: {
+    maxSize?: number // in bytes
+    allowedTypes?: string[]
+    allowedExtensions?: string[]
+  } = {}
+): ValidationResult => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  const {
+    maxSize = 10 * 1024 * 1024, // 10MB default
+    allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
+    allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf'],
+  } = options
+
+  if (!file) {
+    errors.push('File is required')
+    return { valid: false, errors, warnings }
+  }
+
+  // Check file size
+  if (file.size > maxSize) {
+    errors.push(`File size must be less than ${Math.round(maxSize / 1024 / 1024)}MB`)
+  }
+
+  // Check file type
+  if (!allowedTypes.includes(file.type)) {
+    errors.push(`File type not allowed. Allowed types: ${allowedTypes.join(', ')}`)
+  }
+
+  // Check file extension
+  const extension = '.' + file.name.split('.').pop()?.toLowerCase()
+  if (!allowedExtensions.includes(extension)) {
+    errors.push(`File extension not allowed. Allowed extensions: ${allowedExtensions.join(', ')}`)
+  }
+
+  // Check for suspicious file names
+  if (file.name.includes('..') || file.name.includes('/') || file.name.includes('\\')) {
+    errors.push('File name contains invalid characters')
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  }
+}
+
+/**
+ * Generic form validation
+ */
 export const validateForm = (
   data: Record<string, any>,
-  schema: Record<string, ValidationRule>
+  rules: Record<string, (value: any) => ValidationResult>
 ): {
-  isValid: boolean
+  valid: boolean
   errors: Record<string, string[]>
+  warnings: Record<string, string[]>
 } => {
   const errors: Record<string, string[]> = {}
-  let isValid = true
+  const warnings: Record<string, string[]> = {}
+  let valid = true
 
-  Object.entries(schema).forEach(([field, rules]) => {
-    const result = validateField(data[field], rules)
-    if (!result.isValid) {
+  Object.entries(rules).forEach(([field, validator]) => {
+    const result = validator(data[field])
+    if (!result.valid) {
+      valid = false
       errors[field] = result.errors
-      isValid = false
+    }
+    if (result.warnings && result.warnings.length > 0) {
+      warnings[field] = result.warnings
     }
   })
 
-  return { isValid, errors }
-}
-
-// Common validation schemas
-export const CommonSchemas = {
-  login: {
-    email: {
-      required: 'Email is required',
-      pattern: ValidationPatterns.email,
-    },
-    password: {
-      required: 'Password is required',
-      minLength: { value: 6, message: 'Password must be at least 6 characters' },
-    }
-  },
-  },
-
-  register: {
-    firstName: {
-      required: 'First name is required',
-      minLength: { value: 2, message: 'First name must be at least 2 characters' },
-      maxLength: { value: 50, message: 'First name must be no more than 50 characters' },
-    },
-    lastName: {
-      required: 'Last name is required',
-      minLength: { value: 2, message: 'Last name must be at least 2 characters' },
-      maxLength: { value: 50, message: 'Last name must be no more than 50 characters' },
-    },
-    email: {
-      required: 'Email is required',
-      pattern: ValidationPatterns.email,
-    },
-    password: {
-      required: 'Password is required',
-      pattern: ValidationPatterns.password,
-    },
-    confirmPassword: {
-      required: 'Please confirm your password',
-      custom: (value: string, data?: any) => {
-        if (data && value !== data.password) {
-          return 'Passwords do not match'
-        }
-        return true
-      },
-    }
-  },
-
-  organization: {
-    name: {
-      required: 'Organization name is required',
-      minLength: { value: 2, message: 'Organization name must be at least 2 characters' },
-      maxLength: { value: 100, message: 'Organization name must be no more than 100 characters' },
-    },
-    type: {
-      required: 'Organization type is required',
-    },
-    email: {
-      required: 'Email is required',
-      pattern: ValidationPatterns.email,
-    },
-    phone: {
-      pattern: ValidationPatterns.phone,
-    },
-    website: {
-      pattern: ValidationPatterns.url,
-    }
-  },
-
-  profile: {
-    firstName: {
-      required: 'First name is required',
-      minLength: { value: 2, message: 'First name must be at least 2 characters' },
-      maxLength: { value: 50, message: 'First name must be no more than 50 characters' },
-    },
-    lastName: {
-      required: 'Last name is required',
-      minLength: { value: 2, message: 'Last name must be at least 2 characters' },
-      maxLength: { value: 50, message: 'Last name must be no more than 50 characters' },
-    },
-    email: {
-      required: 'Email is required',
-      pattern: ValidationPatterns.email,
-    },
-    phone: {
-      pattern: ValidationPatterns.phone,
-    }
-  },
-}
-
-// Utility functions for common validations
-export const isEmail = (email: string): boolean => {
-  return ValidationPatterns.email.value.test(email)
-}
-
-export const isStrongPassword = (password: string): boolean => {
-  return ValidationPatterns.strongPassword.value.test(password)
-}
-
-export const isPhoneNumber = (phone: string): boolean => {
-  return ValidationPatterns.phone.value.test(phone)
-}
-
-export const isUrl = (url: string): boolean => {
-  return ValidationPatterns.url.value.test(url)
-}
-
-// Password strength checker
-export const getPasswordStrength = (
-  password: string
-): {
-  score: number
-  feedback: string[]
-  strength: 'weak' | 'fair' | 'good' | 'strong'
-} => {
-  const feedback: string[] = []
-  let score = 0
-
-  if (password.length >= 8) score += 1
-  else feedback.push('Use at least 8 characters')
-
-  if (password.length >= 12) score += 1
-  else if (password.length >= 8) feedback.push('Consider using 12+ characters for better security')
-
-  if (/[a-z]/.test(password)) score += 1
-  else feedback.push('Include lowercase letters')
-
-  if (/[A-Z]/.test(password)) score += 1
-  else feedback.push('Include uppercase letters')
-
-  if (/\d/.test(password)) score += 1
-  else feedback.push('Include numbers')
-
-  if (/[@$!%*?&]/.test(password)) score += 1
-  else feedback.push('Include special characters (@$!%*?&)')
-
-  const strength = score <= 2 ? 'weak' : score <= 3 ? 'fair' : score <= 4 ? 'good' : 'strong'
-
-  return { score, feedback, strength }
+  return { valid, errors, warnings }
 }

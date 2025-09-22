@@ -6,11 +6,13 @@ import {
   DocumentTextIcon,
   EllipsisVerticalIcon,
   FunnelIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline'
 import React, { useState } from 'react'
 import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout'
 import { AppButton } from '@/components/ui/AppButton'
 import { AppCard } from '@/components/ui/AppCard'
+import { OrganizationDetail } from '@/components/superadmin/OrganizationDetail'
 import { cn } from '@/utils/cn'
 
 // Mock data - will be replaced with real Supabase data
@@ -79,6 +81,8 @@ export const OrganizationsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null)
+  const [isViewingDetail, setIsViewingDetail] = useState(false)
 
   const filteredOrganizations = mockOrganizations.filter(org => {
     const matchesSearch = org.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -86,6 +90,16 @@ export const OrganizationsPage: React.FC = () => {
     const matchesType = typeFilter === 'all' || org.type === typeFilter
     return matchesSearch && matchesStatus && matchesType
   })
+
+  const handleViewOrganization = (organizationId: string) => {
+    setSelectedOrganizationId(organizationId)
+    setIsViewingDetail(true)
+  }
+
+  const handleCloseDetail = () => {
+    setIsViewingDetail(false)
+    setSelectedOrganizationId(null)
+  }
 
   return (
     <SuperAdminLayout>
@@ -234,9 +248,20 @@ export const OrganizationsPage: React.FC = () => {
                       {org.lastActivity}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <EllipsisVerticalIcon className="h-5 w-5" />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <AppButton
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewOrganization(org.id)}
+                          className="flex items-center gap-1"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                          View
+                        </AppButton>
+                        <button className="text-gray-400 hover:text-gray-600">
+                          <EllipsisVerticalIcon className="h-5 w-5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -261,6 +286,29 @@ export const OrganizationsPage: React.FC = () => {
             </div>
           </div>
         </AppCard>
+
+        {/* Organization Detail Modal */}
+        {isViewingDetail && selectedOrganizationId && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+                onClick={handleCloseDetail}
+              />
+
+              {/* Modal */}
+              <div className="relative w-full max-w-7xl bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
+                <OrganizationDetail
+                  organizationId={selectedOrganizationId}
+                  onClose={handleCloseDetail}
+                  onEdit={() => console.log('Edit organization')}
+                  onDelete={() => console.log('Delete organization')}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </SuperAdminLayout>
   )

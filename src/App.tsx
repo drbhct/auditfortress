@@ -1,14 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React, { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthGuard, SuperAdminGuard } from '@/components/auth/AuthGuard'
+import { BrowserRouter as Router } from 'react-router-dom'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { useAuth } from '@/hooks/useAuth'
-import { LoginPage, DashboardPage, SuperAdminDashboard } from '@/pages'
-import { GlobalUsersPage } from '@/pages/superadmin/GlobalUsersPage'
-import { OrganizationsPage } from '@/pages/superadmin/OrganizationsPage'
-import { TemplatesPage } from '@/pages/superadmin/TemplatesPage'
+import { useKeyboardShortcuts } from '@/hooks/useNavigation'
+import { AppRoutes } from '@/routes'
 import { initializeAuth, useAuthStore } from '@/stores/authStore'
+import { initializeSecurity } from '@/utils/security'
 
 // Create a client for TanStack Query
 const queryClient = new QueryClient({
@@ -20,42 +19,12 @@ const queryClient = new QueryClient({
   },
 })
 
-// Smart redirect component that routes based on user role
-const SmartRedirect: React.FC = () => {
-  const { isAuthenticated, isSuperAdmin, profile, isLoading } = useAuth()
-
-  // Wait for loading to complete before making routing decisions
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-
-  // Wait for profile to be loaded before checking SuperAdmin status
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  if (isSuperAdmin) {
-    return <Navigate to="/superadmin" replace />
-  }
-
-  return <Navigate to="/dashboard" replace />
-}
-
 // App content component (separated to use hooks)
 const AppContent: React.FC = () => {
   const { isLoading } = useAuth()
+
+  // Enable keyboard shortcuts
+  useKeyboardShortcuts()
 
   // Show loading screen while initializing auth
   if (isLoading) {
@@ -69,66 +38,14 @@ const AppContent: React.FC = () => {
     )
   }
 
-  return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
-
-      {/* SuperAdmin routes */}
-      <Route
-        path="/superadmin"
-        element={
-          <SuperAdminGuard>
-            <SuperAdminDashboard />
-          </SuperAdminGuard>
-        }
-      />
-      <Route
-        path="/superadmin/organizations"
-        element={
-          <SuperAdminGuard>
-            <OrganizationsPage />
-          </SuperAdminGuard>
-        }
-      />
-      <Route
-        path="/superadmin/users"
-        element={
-          <SuperAdminGuard>
-            <GlobalUsersPage />
-          </SuperAdminGuard>
-        }
-      />
-      <Route
-        path="/superadmin/templates"
-        element={
-          <SuperAdminGuard>
-            <TemplatesPage />
-          </SuperAdminGuard>
-        }
-      />
-
-      {/* Protected routes */}
-      <Route
-        path="/dashboard"
-        element={
-          <AuthGuard>
-            <DashboardPage />
-          </AuthGuard>
-        }
-      />
-
-      {/* Default redirect - SuperAdmins go to SuperAdmin dashboard, others to regular dashboard */}
-      <Route path="/" element={<SmartRedirect />} />
-
-      {/* Catch all - redirect based on user role */}
-      <Route path="*" element={<SmartRedirect />} />
-    </Routes>
-  )
+  return <AppRoutes />
 }
 
 function App() {
   useEffect(() => {
+    // Initialize security features
+    initializeSecurity()
+
     // Initialize authentication on app start
     const initAuth = async () => {
       try {
@@ -146,18 +63,20 @@ function App() {
   }, [])
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <div className="App">
-          <AppContent />
-        </div>
-      </Router>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <Router
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
+          <div className="App">
+            <AppContent />
+          </div>
+        </Router>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }
 

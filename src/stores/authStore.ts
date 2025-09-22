@@ -7,6 +7,8 @@ import {
   updateLoginTracking,
   logProfileActivity,
 } from '@/lib/supabaseClient'
+import { RateLimiter, SecurityValidator, initializeSecurity } from '@/utils/security'
+import { handleError } from '@/utils/errorHandler'
 import type { AuthState, Profile, Organization, Role, LoginCredentials } from '@/types'
 
 interface AuthActions {
@@ -58,6 +60,29 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true })
 
         try {
+          // Rate limiting check
+          const rateLimitCheck = RateLimiter.checkLoginAttempts(credentials.email)
+          if (!rateLimitCheck.allowed) {
+            const lockoutMinutes = Math.ceil((rateLimitCheck.lockoutTime || 0) / 60000)
+            set({ isLoading: false })
+            return {
+              success: false,
+              error: `Too many failed attempts. Please try again in ${lockoutMinutes} minute(s).`,
+            }
+          }
+
+          // Security validation
+          const clientIP = SecurityValidator.getClientIP()
+          const userAgent = navigator.userAgent
+
+          if (SecurityValidator.isSuspiciousRequest(userAgent, clientIP)) {
+            set({ isLoading: false })
+            return {
+              success: false,
+              error: 'Access denied due to security policy.',
+            }
+          }
+
           console.log('Attempting to sign in with:', { email: credentials.email })
 
           const { data, error } = await supabase.auth.signInWithPassword({
@@ -69,16 +94,27 @@ export const useAuthStore = create<AuthStore>()(
 
           if (error) {
             console.error('Sign in error:', error)
+
+            // Record failed attempt
+            RateLimiter.recordLoginAttempt(credentials.email, false)
+
             set({ isLoading: false })
             return { success: false, error: error.message }
           }
 
           if (data.user) {
-            // Update login tracking
-            await updateLoginTracking(data.user.id)
+            // Record successful attempt
+            RateLimiter.recordLoginAttempt(credentials.email, true)
 
-            // Log login activity
-            await logProfileActivity(data.user.id, 'login', { method: 'email_password' })
+            // Update login tracking with IP
+            await updateLoginTracking(data.user.id, clientIP)
+
+            // Log login activity with security context
+            await logProfileActivity(data.user.id, 'login', {
+              method: 'email_password',
+              ip: clientIP,
+              userAgent: userAgent,
+            })
 
             // Fetch and set user profile data
             await get().refreshUserData()
@@ -87,10 +123,20 @@ export const useAuthStore = create<AuthStore>()(
           set({ isLoading: false })
           return { success: true }
         } catch (error) {
+          // Record failed attempt
+          RateLimiter.recordLoginAttempt(credentials.email, false)
+
           set({ isLoading: false })
+
+          // Use error handler for consistent error reporting
+          const apiError = await handleError(error, {
+            action: 'sign_in',
+            component: 'authStore',
+          })
+
           return {
             success: false,
-            error: error instanceof Error ? error.message : 'An unexpected error occurred',
+            error: apiError.message,
           }
         }
       },
@@ -274,7 +320,7 @@ export const useAuthStore = create<AuthStore>()(
         isAuthenticated: state.isAuthenticated,
       }),
     }
-  ),
+  )
 )
 
 // Flag to prevent multiple initializations
