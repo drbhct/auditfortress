@@ -4,11 +4,11 @@ import { LoginForm } from '@/components/auth/LoginForm'
 import { SignUpForm } from '@/components/auth/SignUpForm'
 import { useAuth } from '@/hooks/useAuth'
 
-export const LoginPage: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth()
-  const [isSignUp, setIsSignUp] = useState(false)
+// Smart redirect component for login page
+const LoginRedirect: React.FC = () => {
+  const { isAuthenticated, isSuperAdmin, profile, isLoading } = useAuth()
 
-  // Show loading while checking authentication
+  // Wait for loading to complete
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -17,9 +17,44 @@ export const LoginPage: React.FC = () => {
     )
   }
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
+  // If not authenticated, don't redirect
+  if (!isAuthenticated) {
+    return null
+  }
+
+  // Wait for profile to be loaded before checking SuperAdmin status
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
+
+  // Redirect based on user role
+  if (isSuperAdmin) {
+    return <Navigate to="/superadmin" replace />
+  } else {
     return <Navigate to="/dashboard" replace />
+  }
+}
+
+const LoginPage: React.FC = () => {
+  const { isAuthenticated, isLoading } = useAuth()
+  const [isSignUp, setIsSignUp] = useState(false)
+
+  // Show redirect logic if authenticated
+  if (isAuthenticated) {
+    return <LoginRedirect />
+  }
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    )
   }
 
   return (
@@ -45,3 +80,5 @@ export const LoginPage: React.FC = () => {
     </div>
   )
 }
+
+export default LoginPage

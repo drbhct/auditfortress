@@ -75,17 +75,23 @@ export const getCurrentUserProfile = async () => {
 
 // Helper function to update login tracking
 export const updateLoginTracking = async (userId: string, ipAddress?: string) => {
-  const updates = {
-    last_login_at: new Date().toISOString(),
-    last_login_ip: ipAddress,
-    login_count: 1, // This will be incremented by a database trigger
-    failed_login_attempts: 0,
-  }
+  try {
+    const updates = {
+      last_login_at: new Date().toISOString(),
+      last_login_ip: ipAddress,
+      login_count: 1, // This will be incremented by a database trigger
+      failed_login_attempts: 0,
+    }
 
-  const { error } = await supabase.from('profiles').update(updates).eq('id', userId)
+    const { error } = await supabase.from('profiles').update(updates).eq('id', userId)
 
-  if (error) {
-    console.error('Error updating login tracking:', error)
+    if (error) {
+      // Silently fail - login tracking is non-critical
+      // console.warn('Login tracking failed (non-critical):', error.message)
+    }
+  } catch (error) {
+    // Don't let tracking errors break the authentication flow
+    console.warn('Warning: Login tracking failed (non-critical):', error)
   }
 }
 
@@ -97,16 +103,22 @@ export const logProfileActivity = async (
   ipAddress?: string,
   userAgent?: string,
 ) => {
-  const { error } = await supabase.rpc('log_profile_activity', {
-    p_user_id: userId,
-    p_activity_type: activityType,
-    p_details: details,
-    p_ip_address: ipAddress,
-    p_user_agent: userAgent,
-  })
+  try {
+    const { error } = await supabase.rpc('log_profile_activity', {
+      p_user_id: userId,
+      p_activity_type: activityType,
+      p_details: details,
+      p_ip_address: ipAddress,
+      p_user_agent: userAgent,
+    })
 
-  if (error) {
-    console.error('Error logging profile activity:', error)
+    if (error) {
+      // Silently fail - profile activity logging is non-critical
+      // console.warn('Profile activity logging failed (non-critical):', error.message)
+    }
+  } catch (error) {
+    // Don't let logging errors break the authentication flow
+    console.warn('Warning: Profile activity logging failed (non-critical):', error)
   }
 }
 

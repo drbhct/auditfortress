@@ -7,12 +7,14 @@ import { GlobalSearch } from './GlobalSearch'
 import { useNavigation } from '@/hooks/useNavigation'
 
 interface MainLayoutProps {
+  children?: React.ReactNode
   showSidebar?: boolean
   showBreadcrumb?: boolean
   className?: string
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
+  children,
   showSidebar = false,
   showBreadcrumb = true,
   className = '',
@@ -54,7 +56,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
 
           {/* Page content */}
           <main className="flex-1">
-            <Outlet />
+            {children || <Outlet />}
           </main>
         </div>
       </div>
@@ -87,7 +89,7 @@ export const SidebarLayout: React.FC<{ children: React.ReactNode }> = ({ childre
 )
 
 export const FullScreenLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <MainLayout showSidebar={false} showBreadcrumb={false}>
+  <div className="min-h-screen bg-gray-50">
     {children}
-  </MainLayout>
+  </div>
 )

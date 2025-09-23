@@ -1,154 +1,142 @@
-import { useState, useEffect, useCallback } from 'react'
-import { TemplateService } from '@/services/templateService'
-import type { 
-  PolicyTemplate, 
-  TemplateCategory, 
-  TemplateWithCategory, 
-  ApiResponse 
-} from '@/types'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { templateService, type TemplateFilters, type TemplateCreateData, type TemplateUpdateData } from '@/services/templateService'
 
-export interface UseTemplatesReturn {
-  // Data
-  templates: TemplateWithCategory[]
-  categories: TemplateCategory[]
-  
-  // Loading states
-  isLoadingTemplates: boolean
-  isLoadingCategories: boolean
-  
-  // Error states
-  templatesError: string | null
-  categoriesError: string | null
-  
-  // Actions
-  refreshTemplates: () => Promise<void>
-  refreshCategories: () => Promise<void>
-  createTemplate: (template: Omit<PolicyTemplate, 'id' | 'createdAt' | 'updatedAt'>) => Promise<ApiResponse<PolicyTemplate>>
-  updateTemplate: (id: string, updates: Partial<PolicyTemplate>) => Promise<ApiResponse<PolicyTemplate>>
-  deleteTemplate: (id: string) => Promise<ApiResponse<void>>
-  searchTemplates: (query: string) => Promise<ApiResponse<TemplateWithCategory[]>>
-  getTemplatesByCategory: (categoryId: string) => Promise<ApiResponse<TemplateWithCategory[]>>
+export const TEMPLATE_QUERY_KEYS = {
+  all: ['templates'] as const,
+  lists: () => [...TEMPLATE_QUERY_KEYS.all, 'list'] as const,
+  list: (filters: TemplateFilters, page: number, limit: number) => 
+    [...TEMPLATE_QUERY_KEYS.lists(), { filters, page, limit }] as const,
+  details: () => [...TEMPLATE_QUERY_KEYS.all, 'detail'] as const,
+  detail: (id: string) => [...TEMPLATE_QUERY_KEYS.details(), id] as const,
+  categories: () => [...TEMPLATE_QUERY_KEYS.all, 'categories'] as const,
+  stats: () => [...TEMPLATE_QUERY_KEYS.all, 'stats'] as const,
 }
 
-export function useTemplates(): UseTemplatesReturn {
-  // State
-  const [templates, setTemplates] = useState<TemplateWithCategory[]>([])
-  const [categories, setCategories] = useState<TemplateCategory[]>([])
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false)
-  const [isLoadingCategories, setIsLoadingCategories] = useState(false)
-  const [templatesError, setTemplatesError] = useState<string | null>(null)
-  const [categoriesError, setCategoriesError] = useState<string | null>(null)
+/**
+ * Hook for fetching templates with pagination and filtering
+ */
+export function useTemplates(
+  filters: TemplateFilters = {},
+  page = 1,
+  limit = 10,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: TEMPLATE_QUERY_KEYS.list(filters, page, limit),
+    queryFn: () => templateService.getSystemTemplates(filters, page, limit),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: options?.enabled ?? true,
+  })
+}
 
-  // Load templates
-  const loadTemplates = useCallback(async () => {
-    setIsLoadingTemplates(true)
-    setTemplatesError(null)
-    
-    try {
-      const response = await TemplateService.getTemplates()
-      if (response.success && response.data) {
-        setTemplates(response.data)
-      } else {
-        setTemplatesError(response.error || 'Failed to load templates')
-      }
-    } catch (error) {
-      setTemplatesError(error instanceof Error ? error.message : 'Failed to load templates')
-    } finally {
-      setIsLoadingTemplates(false)
-    }
-  }, [])
+/**
+ * Hook for fetching a single template
+ */
+export function useTemplate(id: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: TEMPLATE_QUERY_KEYS.detail(id),
+    queryFn: () => templateService.getSystemTemplate(id),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: (options?.enabled ?? true) && !!id,
+  })
+}
 
-  // Load categories
-  const loadCategories = useCallback(async () => {
-    setIsLoadingCategories(true)
-    setCategoriesError(null)
-    
-    try {
-      const response = await TemplateService.getCategories()
-      if (response.success && response.data) {
-        setCategories(response.data)
-      } else {
-        setCategoriesError(response.error || 'Failed to load categories')
-      }
-    } catch (error) {
-      setCategoriesError(error instanceof Error ? error.message : 'Failed to load categories')
-    } finally {
-      setIsLoadingCategories(false)
-    }
-  }, [])
+/**
+ * Hook for fetching template categories
+ */
+export function useTemplateCategories() {
+  return useQuery({
+    queryKey: TEMPLATE_QUERY_KEYS.categories(),
+    queryFn: () => templateService.getTemplateCategories(),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  })
+}
 
-  // Create template
-  const createTemplate = useCallback(async (template: Omit<PolicyTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const response = await TemplateService.createTemplate(template)
-    if (response.success) {
-      // Refresh templates list
-      await loadTemplates()
-    }
-    return response
-  }, [loadTemplates])
+/**
+ * Hook for fetching template statistics
+ */
+export function useTemplateStats() {
+  return useQuery({
+    queryKey: TEMPLATE_QUERY_KEYS.stats(),
+    queryFn: () => templateService.getTemplateStats(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
 
-  // Update template
-  const updateTemplate = useCallback(async (id: string, updates: Partial<PolicyTemplate>) => {
-    const response = await TemplateService.updateTemplate(id, updates)
-    if (response.success) {
-      // Update local state
-      setTemplates(prev => 
-        prev.map(template => 
-          template.id === id 
-            ? { ...template, ...updates, updatedAt: new Date().toISOString() }
-            : template
-        )
+/**
+ * Hook for creating a template
+ */
+export function useCreateTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (templateData: TemplateCreateData) => 
+      templateService.createSystemTemplate(templateData),
+    onSuccess: () => {
+      // Invalidate all template lists and stats
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.lists() })
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.stats() })
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.categories() })
+    },
+  })
+}
+
+/**
+ * Hook for updating a template
+ */
+export function useUpdateTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: TemplateUpdateData }) => 
+      templateService.updateSystemTemplate(id, data),
+    onSuccess: (updatedTemplate) => {
+      // Update the specific template in cache
+      queryClient.setQueryData(
+        TEMPLATE_QUERY_KEYS.detail(updatedTemplate.id),
+        updatedTemplate
       )
-    }
-    return response
-  }, [])
+      
+      // Invalidate template lists to refresh data
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.lists() })
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.stats() })
+    },
+  })
+}
 
-  // Delete template
-  const deleteTemplate = useCallback(async (id: string) => {
-    const response = await TemplateService.deleteTemplate(id)
-    if (response.success) {
-      // Remove from local state
-      setTemplates(prev => prev.filter(template => template.id !== id))
-    }
-    return response
-  }, [])
+/**
+ * Hook for deleting a template
+ */
+export function useDeleteTemplate() {
+  const queryClient = useQueryClient()
 
-  // Search templates
-  const searchTemplates = useCallback(async (query: string) => {
-    return await TemplateService.searchTemplates(query)
-  }, [])
+  return useMutation({
+    mutationFn: (id: string) => templateService.deleteSystemTemplate(id),
+    onSuccess: (_, deletedId) => {
+      // Remove the template from cache
+      queryClient.removeQueries({ queryKey: TEMPLATE_QUERY_KEYS.detail(deletedId) })
+      
+      // Invalidate template lists and stats
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.lists() })
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.stats() })
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.categories() })
+    },
+  })
+}
 
-  // Get templates by category
-  const getTemplatesByCategory = useCallback(async (categoryId: string) => {
-    return await TemplateService.getTemplatesByCategory(categoryId)
-  }, [])
+/**
+ * Hook for duplicating a template
+ */
+export function useDuplicateTemplate() {
+  const queryClient = useQueryClient()
 
-  // Load data on mount
-  useEffect(() => {
-    loadTemplates()
-    loadCategories()
-  }, [loadTemplates, loadCategories])
-
-  return {
-    // Data
-    templates,
-    categories,
-    
-    // Loading states
-    isLoadingTemplates,
-    isLoadingCategories,
-    
-    // Error states
-    templatesError,
-    categoriesError,
-    
-    // Actions
-    refreshTemplates: loadTemplates,
-    refreshCategories: loadCategories,
-    createTemplate,
-    updateTemplate,
-    deleteTemplate,
-    searchTemplates,
-    getTemplatesByCategory
-  }
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => 
+      templateService.duplicateSystemTemplate(id, name),
+    onSuccess: () => {
+      // Invalidate template lists and stats
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.lists() })
+      queryClient.invalidateQueries({ queryKey: TEMPLATE_QUERY_KEYS.stats() })
+    },
+  })
 }

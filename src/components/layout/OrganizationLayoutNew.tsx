@@ -1,14 +1,9 @@
 import {
-  ShieldCheckIcon,
-  Squares2X2Icon,
-  BuildingOfficeIcon,
-  UsersIcon,
+  HomeIcon,
   DocumentTextIcon,
-  CreditCardIcon,
+  ShieldCheckIcon,
   ChartBarIcon,
-  CpuChipIcon,
-  ServerIcon,
-  QuestionMarkCircleIcon,
+  UsersIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   ArrowLeftIcon,
@@ -16,70 +11,86 @@ import {
 import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/utils/cn'
 import { NotificationCenter } from '@/components/notifications'
 import { RoleSwitcher } from '@/components/dev'
 
-interface SuperAdminLayoutProps {
+interface OrganizationLayoutProps {
   children: React.ReactNode
 }
 
-// Navigation items matching the Vue version exactly
+// Navigation items for organization users
 const navigationItems = [
-  { path: '/superadmin', label: 'Dashboard', icon: Squares2X2Icon },
-  { path: '/superadmin/organizations', label: 'Organizations', icon: BuildingOfficeIcon },
-  { path: '/superadmin/users', label: 'Global Users', icon: UsersIcon },
-  { path: '/superadmin/templates', label: 'Templates', icon: DocumentTextIcon },
-  { path: '/superadmin/billing', label: 'Billing', icon: CreditCardIcon },
-  { path: '/superadmin/analytics', label: 'Analytics', icon: ChartBarIcon },
-  { path: '/superadmin/ai', label: 'AI Management', icon: CpuChipIcon },
-  { path: '/superadmin/system', label: 'System', icon: ServerIcon },
-  { path: '/superadmin/support', label: 'Support', icon: QuestionMarkCircleIcon },
-  { path: '/superadmin/settings', label: 'Settings', icon: Cog6ToothIcon },
+  { path: '/dashboard', label: 'Dashboard', icon: HomeIcon },
+  { path: '/documents', label: 'Documents', icon: DocumentTextIcon },
+  { path: '/compliance', label: 'Compliance', icon: ShieldCheckIcon },
+  { path: '/analytics', label: 'Analytics', icon: ChartBarIcon },
+  { path: '/team', label: 'Team', icon: UsersIcon, requiresAccountOwner: true },
+  { path: '/settings', label: 'Settings', icon: Cog6ToothIcon, requiresAccountOwner: true },
 ]
 
-export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) => {
+export const OrganizationLayout: React.FC<OrganizationLayoutProps> = ({ children }) => {
   const location = useLocation()
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { logout, profile, organization } = useAuth()
+  const { isAccountOwner } = usePermissions()
 
-  // Compute page title based on route (matching Vue logic)
+  // Compute page title based on route
   const getPageTitle = () => {
     const item = navigationItems.find(i => i.path === location.pathname)
     if (item) return item.label
 
-    // Handle organization detail pages
-    if (location.pathname.startsWith('/superadmin/organizations/')) {
-      return 'Organization Details'
+    // Handle specific pages
+    if (location.pathname.startsWith('/documents/')) {
+      return 'Document Details'
+    }
+    if (location.pathname.startsWith('/team/')) {
+      return 'Team Management'
     }
 
-    return 'SuperAdmin'
+    return 'Dashboard'
   }
 
   const handleLogout = async () => {
     await logout()
+    navigate('/login')
   }
 
   const handleGoBack = () => {
     navigate(-1)
   }
 
+  // Filter navigation items based on permissions
+  const visibleNavigationItems = navigationItems.filter(item => {
+    if (item.requiresAccountOwner && !isAccountOwner) {
+      return false
+    }
+    return true
+  })
+
   return (
-    <div className="superadmin-layout min-h-screen bg-gray-50">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-gray-100">
+      {/* Dark Sidebar - matching SuperAdmin style */}
       <div className="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900">
-        {/* Logo/Title */}
+        {/* Organization Logo/Title */}
         <div className="flex items-center h-16 px-6 bg-gray-800">
-          <ShieldCheckIcon className="h-8 w-8 text-blue-500 mr-3" />
+          <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center mr-3">
+            <span className="text-white text-sm font-medium">
+              {organization?.name?.charAt(0)?.toUpperCase() || 'O'}
+            </span>
+          </div>
           <div>
-            <h1 className="text-white font-bold text-lg">AuditFortress</h1>
-            <p className="text-gray-400 text-xs">SuperAdmin Portal</p>
+            <h1 className="text-white font-bold text-lg">{organization?.name || 'Organization'}</h1>
+            <p className="text-gray-400 text-xs">
+              {organization?.type?.replace('_', ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || 'Healthcare'}
+            </p>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="mt-6">
-          {navigationItems.map(item => {
+          {visibleNavigationItems.map(item => {
             const Icon = item.icon
             const isActive = location.pathname === item.path
 
@@ -113,7 +124,7 @@ export const SuperAdminLayout: React.FC<SuperAdminLayoutProps> = ({ children }) 
 
       {/* Main content area */}
       <div className="ml-64">
-        {/* Top bar */}
+        {/* Top bar - matching SuperAdmin style */}
         <div className="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-6">
           <div className="flex items-center">
             <button onClick={handleGoBack} className="text-gray-400 hover:text-gray-600 mr-4">

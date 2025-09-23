@@ -2,49 +2,31 @@ import React, { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthGuard, SuperAdminGuard } from '@/components/auth/AuthGuard'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { MainLayout, DashboardLayout, SidebarLayout, FullScreenLayout } from '@/components/layout'
+import { FullScreenLayout } from '@/components/layout'
 import { useAuth } from '@/hooks/useAuth'
 
 // Lazy load pages for better performance
-const LoginPage = React.lazy(() =>
-  import('@/pages/LoginPage').then(module => ({ default: module.LoginPage }))
-)
-const DashboardPage = React.lazy(() =>
-  import('@/pages/DashboardPage').then(module => ({ default: module.DashboardPage }))
-)
-const DocumentsPage = React.lazy(() =>
-  import('@/pages/DocumentsPage').then(module => ({ default: module.DocumentsPage }))
-)
-const CompliancePage = React.lazy(() =>
-  import('@/pages/CompliancePage').then(module => ({ default: module.CompliancePage }))
-)
-const AnalyticsPage = React.lazy(() =>
-  import('@/pages/AnalyticsPage').then(module => ({ default: module.AnalyticsPage }))
-)
-const ProfilePage = React.lazy(() =>
-  import('@/pages/ProfilePage').then(module => ({ default: module.ProfilePage }))
-)
-const SettingsPage = React.lazy(() =>
-  import('@/pages/SettingsPage').then(module => ({ default: module.SettingsPage }))
-)
+const LoginPage = React.lazy(() => import('@/pages/LoginPage'))
+const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'))
+const DocumentsPage = React.lazy(() => import('@/pages/DocumentsPage'))
+const TeamPage = React.lazy(() => import('@/pages/TeamPage'))
+const CompliancePage = React.lazy(() => import('@/pages/CompliancePage'))
+const AnalyticsPage = React.lazy(() => import('@/pages/AnalyticsPage'))
+const ProfilePage = React.lazy(() => import('@/pages/ProfilePage'))
+const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'))
 
 // SuperAdmin pages
-const SuperAdminDashboard = React.lazy(() =>
-  import('@/pages/superadmin/SuperAdminDashboard').then(module => ({
-    default: module.SuperAdminDashboard,
-  }))
-)
-const OrganizationsPage = React.lazy(() =>
-  import('@/pages/superadmin/OrganizationsPage').then(module => ({
-    default: module.OrganizationsPage,
-  }))
-)
-const GlobalUsersPage = React.lazy(() =>
-  import('@/pages/superadmin/GlobalUsersPage').then(module => ({ default: module.GlobalUsersPage }))
-)
-const TemplatesPage = React.lazy(() =>
-  import('@/pages/superadmin/TemplatesPage').then(module => ({ default: module.TemplatesPage }))
-)
+import SuperAdminDashboard from '@/pages/superadmin/SuperAdminDashboard'
+import OrganizationsPage from '@/pages/superadmin/OrganizationsPage'
+import GlobalUsersPage from '@/pages/superadmin/GlobalUsersPage'
+import UserDetailPage from '@/pages/superadmin/UserDetailPage'
+import TemplatesPage from '@/pages/superadmin/TemplatesPageNew'
+import TeamMemberDetailPage from '@/pages/TeamMemberDetailPage'
+// import SuperAdminDashboard from '@/pages/superadmin/SuperAdminDashboard'
+// const SuperAdminDashboard = React.lazy(() => import('@/pages/superadmin/SuperAdminDashboard'))
+// const OrganizationsPage = React.lazy(() => import('@/pages/superadmin/OrganizationsPage'))
+// const GlobalUsersPage = React.lazy(() => import('@/pages/superadmin/GlobalUsersPage'))
+// const TemplatesPage = React.lazy(() => import('@/pages/superadmin/TemplatesPage'))
 
 // Loading component
 const PageLoader: React.FC = () => (
@@ -101,9 +83,7 @@ export const AppRoutes: React.FC = () => {
           path="/superadmin"
           element={
             <SuperAdminGuard>
-              <SidebarLayout>
-                <SuperAdminDashboard />
-              </SidebarLayout>
+              <SuperAdminDashboard />
             </SuperAdminGuard>
           }
         />
@@ -111,9 +91,7 @@ export const AppRoutes: React.FC = () => {
           path="/superadmin/organizations"
           element={
             <SuperAdminGuard>
-              <SidebarLayout>
-                <OrganizationsPage />
-              </SidebarLayout>
+              <OrganizationsPage />
             </SuperAdminGuard>
           }
         />
@@ -121,9 +99,15 @@ export const AppRoutes: React.FC = () => {
           path="/superadmin/users"
           element={
             <SuperAdminGuard>
-              <SidebarLayout>
-                <GlobalUsersPage />
-              </SidebarLayout>
+              <GlobalUsersPage />
+            </SuperAdminGuard>
+          }
+        />
+        <Route
+          path="/superadmin/users/:userId"
+          element={
+            <SuperAdminGuard>
+              <UserDetailPage />
             </SuperAdminGuard>
           }
         />
@@ -131,9 +115,7 @@ export const AppRoutes: React.FC = () => {
           path="/superadmin/templates"
           element={
             <SuperAdminGuard>
-              <SidebarLayout>
-                <TemplatesPage />
-              </SidebarLayout>
+              <TemplatesPage />
             </SuperAdminGuard>
           }
         />
@@ -143,9 +125,7 @@ export const AppRoutes: React.FC = () => {
           path="/dashboard"
           element={
             <AuthGuard>
-              <DashboardLayout>
-                <DashboardPage />
-              </DashboardLayout>
+              <DashboardPage />
             </AuthGuard>
           }
         />
@@ -153,9 +133,23 @@ export const AppRoutes: React.FC = () => {
           path="/documents"
           element={
             <AuthGuard>
-              <MainLayout showSidebar={true}>
-                <DocumentsPage />
-              </MainLayout>
+              <DocumentsPage />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/team"
+          element={
+            <AuthGuard>
+              <TeamPage />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/team/:memberId"
+          element={
+            <AuthGuard>
+              <TeamMemberDetailPage />
             </AuthGuard>
           }
         />
@@ -163,9 +157,7 @@ export const AppRoutes: React.FC = () => {
           path="/compliance"
           element={
             <AuthGuard>
-              <MainLayout showSidebar={true}>
-                <CompliancePage />
-              </MainLayout>
+              <CompliancePage />
             </AuthGuard>
           }
         />
@@ -173,9 +165,7 @@ export const AppRoutes: React.FC = () => {
           path="/analytics"
           element={
             <AuthGuard>
-              <MainLayout showSidebar={true}>
-                <AnalyticsPage />
-              </MainLayout>
+              <AnalyticsPage />
             </AuthGuard>
           }
         />
@@ -183,9 +173,7 @@ export const AppRoutes: React.FC = () => {
           path="/profile"
           element={
             <AuthGuard>
-              <MainLayout showSidebar={true}>
-                <ProfilePage />
-              </MainLayout>
+              <ProfilePage />
             </AuthGuard>
           }
         />
@@ -193,9 +181,7 @@ export const AppRoutes: React.FC = () => {
           path="/settings"
           element={
             <AuthGuard>
-              <MainLayout showSidebar={true}>
-                <SettingsPage />
-              </MainLayout>
+              <SettingsPage />
             </AuthGuard>
           }
         />
@@ -210,8 +196,28 @@ export const AppRoutes: React.FC = () => {
   )
 }
 
+// Route definitions types
+interface BaseRoute {
+  path: string
+  label: string
+}
+
+interface AuthRoute extends BaseRoute {
+  requiresAuth: true
+}
+
+interface SuperAdminRoute extends BaseRoute {
+  requiresSuperAdmin: true
+}
+
+interface PublicRoute extends BaseRoute {
+  requiresAuth: false
+}
+
+type RouteDefinition = AuthRoute | SuperAdminRoute | PublicRoute
+
 // Route definitions for navigation
-export const routeDefinitions = {
+export const routeDefinitions: Record<string, RouteDefinition> = {
   // Public routes
   login: {
     path: '/login',
@@ -282,11 +288,11 @@ export const isRouteAccessible = (
 ): boolean => {
   const routeDef = routeDefinitions[route]
 
-  if (routeDef.requiresSuperAdmin && userRole !== 'superadmin') {
+  if ('requiresSuperAdmin' in routeDef && routeDef.requiresSuperAdmin && userRole !== 'superadmin') {
     return false
   }
 
-  if (routeDef.requiresAuth && !isAuthenticated) {
+  if ('requiresAuth' in routeDef && routeDef.requiresAuth && !isAuthenticated) {
     return false
   }
 
@@ -295,7 +301,7 @@ export const isRouteAccessible = (
 
 // Helper function to get accessible routes for a user
 export const getAccessibleRoutes = (userRole: string, isAuthenticated: boolean) => {
-  return Object.entries(routeDefinitions).filter(([key, route]) =>
+  return Object.entries(routeDefinitions).filter(([key]) =>
     isRouteAccessible(key as keyof typeof routeDefinitions, userRole, isAuthenticated)
   )
 }

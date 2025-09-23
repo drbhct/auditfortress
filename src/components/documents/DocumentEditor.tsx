@@ -2,31 +2,29 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import TextStyle from '@tiptap/extension-text-style'
-import Color from '@tiptap/extension-color'
-import BulletList from '@tiptap/extension-bullet-list'
-import OrderedList from '@tiptap/extension-ordered-list'
-import ListItem from '@tiptap/extension-list-item'
-import Link from '@tiptap/extension-link'
-import Table from '@tiptap/extension-table'
-import TableRow from '@tiptap/extension-table-row'
-import TableCell from '@tiptap/extension-table-cell'
-import TableHeader from '@tiptap/extension-table-header'
+// import TextStyle from '@tiptap/extension-text-style'
+// import Color from '@tiptap/extension-color'
+// import BulletList from '@tiptap/extension-bullet-list'
+// import OrderedList from '@tiptap/extension-ordered-list'
+// import ListItem from '@tiptap/extension-list-item'
+// import Link from '@tiptap/extension-link'
+// import Table from '@tiptap/extension-table'
+// import TableRow from '@tiptap/extension-table-row'
+// import TableCell from '@tiptap/extension-table-cell'
+// import TableHeader from '@tiptap/extension-table-header'
 import {
   BoldIcon,
   ItalicIcon,
-  ListBulletIcon,
-  ListNumberedIcon,
-  Heading1Icon,
-  Heading2Icon,
-  Heading3Icon,
+  // ListBulletIcon,
+  // QueueListIcon,
+  Bars3Icon,
+  Bars2Icon,
+  MinusIcon,
   CodeBracketIcon,
-  LinkIcon,
-  TableCellsIcon,
+  // LinkIcon,
   EyeIcon,
   EyeSlashIcon,
   DocumentTextIcon,
-  SaveIcon,
   ArrowPathIcon,
   CheckIcon,
   XMarkIcon,
@@ -65,30 +63,30 @@ export function DocumentEditor({ document, onSave, onCancel, className }: Docume
   const [newTag, setNewTag] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  // Initialize TipTap editor
+  // Initialize TipTap editor with minimal configuration
   const editor = useEditor({
     extensions: [
       StarterKit,
       Placeholder.configure({
         placeholder: 'Start writing your document...',
       }),
-      TextStyle,
-      Color,
-      BulletList,
-      OrderedList,
-      ListItem,
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: {
-          class: 'text-blue-600 underline',
-        },
-      }),
-      Table.configure({
-        resizable: true,
-      }),
-      TableRow,
-      TableHeader,
-      TableCell,
+      // TextStyle,
+      // Color,
+      // BulletList,
+      // OrderedList,
+      // ListItem,
+      // Link.configure({
+      //   openOnClick: false,
+      //   HTMLAttributes: {
+      //     class: 'text-blue-600 underline',
+      //   },
+      // }),
+      // Table.configure({
+      //   resizable: true,
+      // }),
+      // TableRow,
+      // TableHeader,
+      // TableCell,
     ],
     content: document?.content || '',
     editorProps: {
@@ -474,7 +472,7 @@ export function DocumentEditor({ document, onSave, onCancel, className }: Docume
                   onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
                   className={cn(editor.isActive('heading', { level: 1 }) && 'bg-gray-100')}
                 >
-                  <Heading1Icon className="h-4 w-4" />
+                  <Bars3Icon className="h-4 w-4" />
                 </AppButton>
 
                 <AppButton
@@ -483,7 +481,7 @@ export function DocumentEditor({ document, onSave, onCancel, className }: Docume
                   onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
                   className={cn(editor.isActive('heading', { level: 2 }) && 'bg-gray-100')}
                 >
-                  <Heading2Icon className="h-4 w-4" />
+                  <Bars2Icon className="h-4 w-4" />
                 </AppButton>
 
                 <AppButton
@@ -492,12 +490,13 @@ export function DocumentEditor({ document, onSave, onCancel, className }: Docume
                   onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
                   className={cn(editor.isActive('heading', { level: 3 }) && 'bg-gray-100')}
                 >
-                  <Heading3Icon className="h-4 w-4" />
+                  <MinusIcon className="h-4 w-4" />
                 </AppButton>
 
                 <div className="w-px h-6 bg-gray-300 mx-2" />
 
-                <AppButton
+                {/* List functionality temporarily disabled due to import issues */}
+                {/* <AppButton
                   variant="outline"
                   size="sm"
                   onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -512,8 +511,8 @@ export function DocumentEditor({ document, onSave, onCancel, className }: Docume
                   onClick={() => editor.chain().focus().toggleOrderedList().run()}
                   className={cn(editor.isActive('orderedList') && 'bg-gray-100')}
                 >
-                  <ListNumberedIcon className="h-4 w-4" />
-                </AppButton>
+                  <QueueListIcon className="h-4 w-4" />
+                </AppButton> */}
 
                 <div className="w-px h-6 bg-gray-300 mx-2" />
 
@@ -526,7 +525,8 @@ export function DocumentEditor({ document, onSave, onCancel, className }: Docume
                   <CodeBracketIcon className="h-4 w-4" />
                 </AppButton>
 
-                <AppButton
+                {/* Link functionality temporarily disabled due to import issues */}
+                {/* <AppButton
                   variant="outline"
                   size="sm"
                   onClick={() => {
@@ -538,9 +538,10 @@ export function DocumentEditor({ document, onSave, onCancel, className }: Docume
                   className={cn(editor.isActive('link') && 'bg-gray-100')}
                 >
                   <LinkIcon className="h-4 w-4" />
-                </AppButton>
+                </AppButton> */}
 
-                <AppButton
+                {/* Table functionality temporarily disabled due to import issues */}
+                {/* <AppButton
                   variant="outline"
                   size="sm"
                   onClick={() =>
@@ -552,7 +553,7 @@ export function DocumentEditor({ document, onSave, onCancel, className }: Docume
                   }
                 >
                   <TableCellsIcon className="h-4 w-4" />
-                </AppButton>
+                </AppButton> */}
               </div>
             </div>
 
@@ -592,7 +593,7 @@ export function DocumentEditor({ document, onSave, onCancel, className }: Docume
             </>
           ) : (
             <>
-              <SaveIcon className="h-4 w-4" />
+              <CheckIcon className="h-4 w-4" />
               {document ? 'Update Document' : 'Create Document'}
             </>
           )}

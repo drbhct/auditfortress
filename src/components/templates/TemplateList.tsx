@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { MagnifyingGlassIcon, FunnelIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, FunnelIcon, PlusIcon, XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 import { AppButton } from '@/components/ui/AppButton'
 import { AppInput } from '@/components/ui/AppInput'
 import { AppSelect } from '@/components/ui/AppSelect'

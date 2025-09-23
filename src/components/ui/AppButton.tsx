@@ -9,6 +9,7 @@ const buttonVariants = cva(
       variant: {
         default: 'bg-primary-600 text-white hover:bg-primary-700',
         destructive: 'bg-red-600 text-white hover:bg-red-700',
+        danger: 'bg-red-600 text-white hover:bg-red-700',
         outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
         secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
         ghost: 'hover:bg-gray-100 text-gray-700',
@@ -32,10 +33,12 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   loading?: boolean
+  leftIcon?: React.ReactNode
+  rightIcon?: React.ReactNode
 }
 
 const AppButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, loading, children, disabled, ...props }, ref) => {
+  ({ className, variant, size, loading, children, disabled, leftIcon, rightIcon, ...props }, ref) => {
     return (
       <button
         className={cn(buttonVariants({ variant, size, className }))}
@@ -65,7 +68,13 @@ const AppButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
             />
           </svg>
         )}
+        {leftIcon && !loading && (
+          <span className="mr-2 flex-shrink-0">{leftIcon}</span>
+        )}
         {children}
+        {rightIcon && (
+          <span className="ml-2 flex-shrink-0">{rightIcon}</span>
+        )}
       </button>
     )
   },

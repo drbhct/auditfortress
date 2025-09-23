@@ -1,447 +1,370 @@
+import { supabase } from '@/lib/supabaseClient'
 import type { 
-  PolicyTemplate, 
-  TemplateCategory, 
-  TemplateWithCategory, 
-  ApiResponse, 
-  PaginatedResponse 
-} from '@/types'
+  Tables, 
+  TablesInsert, 
+  TablesUpdate,
+  Enums 
+} from '@/types/supabase'
 
-// Mock data for template categories
-const mockCategories: TemplateCategory[] = [
-  {
-    id: '1',
-    name: 'HIPAA Privacy',
-    description: 'HIPAA Privacy compliance templates',
-    parentCategoryId: undefined,
-    organizationTypes: ['healthcare_facility', 'emr_software'],
-    sortOrder: 1,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '2',
-    name: 'Privacy Policies',
-    description: 'Patient privacy policy templates',
-    parentCategoryId: '1',
-    organizationTypes: ['healthcare_facility', 'emr_software'],
-    sortOrder: 1,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '3',
-    name: 'Patient Rights',
-    description: 'Patient rights and responsibilities templates',
-    parentCategoryId: '1',
-    organizationTypes: ['healthcare_facility', 'emr_software'],
-    sortOrder: 2,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '4',
-    name: 'Breach Procedures',
-    description: 'Data breach response procedures',
-    parentCategoryId: '1',
-    organizationTypes: ['healthcare_facility', 'emr_software'],
-    sortOrder: 3,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '5',
-    name: 'HIPAA Security',
-    description: 'HIPAA Security compliance templates',
-    parentCategoryId: undefined,
-    organizationTypes: ['healthcare_facility', 'emr_software'],
-    sortOrder: 2,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '6',
-    name: 'Security Standards',
-    description: 'Technical and administrative safeguards',
-    parentCategoryId: '5',
-    organizationTypes: ['healthcare_facility', 'emr_software'],
-    sortOrder: 1,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '7',
-    name: 'OIG',
-    description: 'Office of Inspector General compliance',
-    parentCategoryId: undefined,
-    organizationTypes: ['healthcare_facility', 'emr_software'],
-    sortOrder: 3,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '8',
-    name: 'Coding',
-    description: 'Medical coding and documentation',
-    parentCategoryId: undefined,
-    organizationTypes: ['healthcare_facility', 'emr_software'],
-    sortOrder: 4,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  },
-  {
-    id: '9',
-    name: 'Documentation',
-    description: 'Clinical documentation requirements',
-    parentCategoryId: undefined,
-    organizationTypes: ['healthcare_facility', 'emr_software'],
-    sortOrder: 5,
-    isActive: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    updatedAt: '2024-01-01T00:00:00Z'
-  }
-]
+// Template types from database
+export type SystemTemplate = Tables<'system_templates'>
+export type OrganizationTemplate = Tables<'organization_templates'>
+export type TemplateCategory = Enums<'template_category'>
 
-// Mock data for policy templates
-const mockTemplates: PolicyTemplate[] = [
-  {
-    id: '1',
-    name: 'HIPAA Privacy Policy',
-    description: 'Comprehensive HIPAA privacy policy template',
-    categoryId: '2',
-    content: `
-      <h1>HIPAA Privacy Policy</h1>
-      <p>This policy outlines how {{organization_name}} protects patient health information...</p>
-      <h2>Patient Rights</h2>
-      <p>Patients have the right to:</p>
-      <ul>
-        <li>Access their health information</li>
-        <li>Request amendments to their records</li>
-        <li>Receive an accounting of disclosures</li>
-      </ul>
-      <h2>Contact Information</h2>
-      <p>Privacy Officer: {{privacy_officer_name}}<br>
-      Phone: {{privacy_officer_phone}}<br>
-      Email: {{privacy_officer_email}}</p>
-    `,
-    variables: {
-      organization_name: 'Your Organization Name',
-      privacy_officer_name: 'Privacy Officer Name',
-      privacy_officer_phone: '(555) 123-4567',
-      privacy_officer_email: 'privacy@organization.com'
-    },
-    status: 'published',
-    createdBy: 'system',
-    createdAt: '2024-01-15T00:00:00Z',
-    updatedAt: '2024-01-15T00:00:00Z'
-  },
-  {
-    id: '2',
-    name: 'Patient Rights and Responsibilities',
-    description: 'Patient rights and responsibilities document',
-    categoryId: '3',
-    content: `
-      <h1>Patient Rights and Responsibilities</h1>
-      <p>{{organization_name}} is committed to protecting your rights as a patient...</p>
-      <h2>Your Rights</h2>
-      <ul>
-        <li>Right to receive quality care</li>
-        <li>Right to privacy and confidentiality</li>
-        <li>Right to participate in treatment decisions</li>
-      </ul>
-      <h2>Your Responsibilities</h2>
-      <ul>
-        <li>Provide accurate health information</li>
-        <li>Follow treatment plans</li>
-        <li>Respect facility policies</li>
-      </ul>
-    `,
-    variables: {
-      organization_name: 'Your Organization Name'
-    },
-    status: 'published',
-    createdBy: 'system',
-    createdAt: '2024-01-20T00:00:00Z',
-    updatedAt: '2024-01-20T00:00:00Z'
-  },
-  {
-    id: '3',
-    name: 'Data Breach Response Plan',
-    description: 'Comprehensive data breach response procedures',
-    categoryId: '4',
-    content: `
-      <h1>Data Breach Response Plan</h1>
-      <p>This plan outlines the steps to take in the event of a data breach...</p>
-      <h2>Immediate Response (0-24 hours)</h2>
-      <ol>
-        <li>Contain the breach</li>
-        <li>Assess the scope and impact</li>
-        <li>Notify the Privacy Officer</li>
-        <li>Document all actions taken</li>
-      </ol>
-      <h2>Notification Requirements</h2>
-      <p>Notify affected individuals within {{notification_period}} days...</p>
-    `,
-    variables: {
-      notification_period: '60'
-    },
-    status: 'published',
-    createdBy: 'system',
-    createdAt: '2024-02-01T00:00:00Z',
-    updatedAt: '2024-02-01T00:00:00Z'
-  },
-  {
-    id: '4',
-    name: 'Security Risk Assessment',
-    description: 'HIPAA security risk assessment template',
-    categoryId: '6',
-    content: `
-      <h1>Security Risk Assessment</h1>
-      <p>This assessment evaluates {{organization_name}}'s security posture...</p>
-      <h2>Administrative Safeguards</h2>
-      <ul>
-        <li>Security Officer designation</li>
-        <li>Workforce training</li>
-        <li>Access management procedures</li>
-      </ul>
-      <h2>Technical Safeguards</h2>
-      <ul>
-        <li>Access controls</li>
-        <li>Audit controls</li>
-        <li>Integrity controls</li>
-      </ul>
-    `,
-    variables: {
-      organization_name: 'Your Organization Name'
-    },
-    status: 'draft',
-    createdBy: 'system',
-    createdAt: '2024-02-10T00:00:00Z',
-    updatedAt: '2024-02-10T00:00:00Z'
-  }
-]
-
-// Helper function to get category by ID
-const getCategoryById = (id: string): TemplateCategory | undefined => {
-  return mockCategories.find(cat => cat.id === id)
+// Extended types for UI
+export interface SystemTemplateWithMetrics extends SystemTemplate {
+  usageCount: number
+  averageRating: number
+  successfulImplementations: number
+  organizationCount: number
 }
 
-// Helper function to add category to template
-const addCategoryToTemplate = (template: PolicyTemplate): TemplateWithCategory => {
-  const category = getCategoryById(template.categoryId)
-  if (!category) {
-    throw new Error(`Category with id ${template.categoryId} not found`)
-  }
-  return { ...template, category }
+export interface TemplateCreateData {
+  name: string
+  description?: string
+  category: TemplateCategory
+  organization_types: string[]
+  compliance_framework?: string
+  content: any // JSON content structure
+  variables?: any[]
+  tags?: string[]
+  is_starter?: boolean
 }
 
-// Template Service
-export class TemplateService {
-  // Get all categories
-  static async getCategories(): Promise<ApiResponse<TemplateCategory[]>> {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      return {
-        success: true,
-        data: mockCategories.filter(cat => cat.isActive)
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch categories'
-      }
-    }
-  }
+export interface TemplateUpdateData extends Partial<TemplateCreateData> {
+  version?: string
+  metadata?: any
+  status?: string
+}
 
-  // Get all templates with categories
-  static async getTemplates(): Promise<ApiResponse<TemplateWithCategory[]>> {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 200))
-      
-      const templatesWithCategories = mockTemplates.map(addCategoryToTemplate)
-      
-      return {
-        success: true,
-        data: templatesWithCategories
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch templates'
-      }
-    }
-  }
+export interface TemplateFilters {
+  category?: TemplateCategory
+  organization_type?: string
+  compliance_framework?: string
+  status?: string
+  search?: string
+  is_starter?: boolean
+}
 
-  // Get templates by category
-  static async getTemplatesByCategory(categoryId: string): Promise<ApiResponse<TemplateWithCategory[]>> {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 150))
-      
-      const templatesInCategory = mockTemplates
-        .filter(template => template.categoryId === categoryId)
-        .map(addCategoryToTemplate)
-      
-      return {
-        success: true,
-        data: templatesInCategory
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch templates by category'
-      }
-    }
-  }
+export interface TemplateListResponse {
+  data: SystemTemplateWithMetrics[]
+  count: number
+  page: number
+  totalPages: number
+}
 
-  // Get single template
-  static async getTemplate(id: string): Promise<ApiResponse<TemplateWithCategory>> {
+class TemplateService {
+  /**
+   * Get all system templates with optional filtering and pagination
+   */
+  async getSystemTemplates(
+    filters: TemplateFilters = {},
+    page = 1,
+    limit = 10
+  ): Promise<TemplateListResponse> {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      const template = mockTemplates.find(t => t.id === id)
-      if (!template) {
-        return {
-          success: false,
-          error: 'Template not found'
-        }
-      }
-      
-      const templateWithCategory = addCategoryToTemplate(template)
-      
-      return {
-        success: true,
-        data: templateWithCategory
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch template'
-      }
-    }
-  }
+      let query = supabase
+        .from('system_templates')
+        .select(`
+          *,
+          organization_templates(count),
+          profiles!system_templates_created_by_fkey(
+            first_name,
+            last_name,
+            email
+          )
+        `)
 
-  // Create new template
-  static async createTemplate(template: Omit<PolicyTemplate, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<PolicyTemplate>> {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      const newTemplate: PolicyTemplate = {
+      // Apply filters
+      if (filters.category) {
+        query = query.eq('category', filters.category)
+      }
+
+      if (filters.compliance_framework) {
+        query = query.eq('compliance_framework', filters.compliance_framework)
+      }
+
+      if (filters.status) {
+        query = query.eq('status', filters.status)
+      }
+
+      if (filters.is_starter !== undefined) {
+        query = query.eq('is_starter', filters.is_starter)
+      }
+
+      if (filters.organization_type) {
+        query = query.contains('organization_types', [filters.organization_type])
+      }
+
+      if (filters.search) {
+        query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+      }
+
+      // Add pagination
+      const offset = (page - 1) * limit
+      query = query.range(offset, offset + limit - 1)
+
+      // Execute query
+      const { data, error, count } = await query
+
+      if (error) {
+        console.error('Error fetching system templates:', error)
+        throw new Error(error.message)
+      }
+
+      // Transform data to include metrics
+      const templatesWithMetrics: SystemTemplateWithMetrics[] = (data || []).map(template => ({
         ...template,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-      
-      mockTemplates.push(newTemplate)
-      
+        usageCount: template.organization_templates?.length || 0,
+        averageRating: 4.5, // TODO: Calculate from actual ratings
+        successfulImplementations: Math.floor((template.organization_templates?.length || 0) * 0.85),
+        organizationCount: template.organization_templates?.length || 0
+      }))
+
       return {
-        success: true,
-        data: newTemplate
+        data: templatesWithMetrics,
+        count: count || 0,
+        page,
+        totalPages: Math.ceil((count || 0) / limit)
       }
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to create template'
-      }
+      console.error('Template service error:', error)
+      throw error
     }
   }
 
-  // Update template
-  static async updateTemplate(id: string, updates: Partial<PolicyTemplate>): Promise<ApiResponse<PolicyTemplate>> {
+  /**
+   * Get a single system template by ID
+   */
+  async getSystemTemplate(id: string): Promise<SystemTemplate | null> {
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      const templateIndex = mockTemplates.findIndex(t => t.id === id)
-      if (templateIndex === -1) {
-        return {
-          success: false,
-          error: 'Template not found'
+      const { data, error } = await supabase
+        .from('system_templates')
+        .select(`
+          *,
+          profiles!system_templates_created_by_fkey(
+            first_name,
+            last_name,
+            email
+          )
+        `)
+        .eq('id', id)
+        .single()
+
+      if (error) {
+        console.error('Error fetching system template:', error)
+        throw new Error(error.message)
+      }
+
+      return data
+    } catch (error) {
+      console.error('Template service error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Create a new system template
+   */
+  async createSystemTemplate(templateData: TemplateCreateData): Promise<SystemTemplate> {
+    try {
+      const insertData: TablesInsert<'system_templates'> = {
+        name: templateData.name,
+        description: templateData.description,
+        category: templateData.category,
+        organization_types: templateData.organization_types,
+        compliance_framework: templateData.compliance_framework,
+        content: templateData.content,
+        variables: templateData.variables || [],
+        tags: templateData.tags || [],
+        is_starter: templateData.is_starter || false,
+        version: '1.0.0',
+        status: 'active'
+      }
+
+      const { data, error } = await supabase
+        .from('system_templates')
+        .insert(insertData)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating system template:', error)
+        throw new Error(error.message)
+      }
+
+      return data
+    } catch (error) {
+      console.error('Template service error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update a system template
+   */
+  async updateSystemTemplate(id: string, templateData: TemplateUpdateData): Promise<SystemTemplate> {
+    try {
+      const updateData: TablesUpdate<'system_templates'> = {
+        ...templateData,
+        updated_at: new Date().toISOString()
+      }
+
+      const { data, error } = await supabase
+        .from('system_templates')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating system template:', error)
+        throw new Error(error.message)
+      }
+
+      return data
+    } catch (error) {
+      console.error('Template service error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Delete a system template
+   */
+  async deleteSystemTemplate(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('system_templates')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Error deleting system template:', error)
+        throw new Error(error.message)
+      }
+    } catch (error) {
+      console.error('Template service error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get template categories with counts
+   */
+  async getTemplateCategories(): Promise<Array<{ category: TemplateCategory; count: number }>> {
+    try {
+      const { data, error } = await supabase
+        .from('system_templates')
+        .select('category')
+
+      if (error) {
+        console.error('Error fetching template categories:', error)
+        throw new Error(error.message)
+      }
+
+      // Count categories
+      const categoryCounts = (data || []).reduce((acc, template) => {
+        acc[template.category] = (acc[template.category] || 0) + 1
+        return acc
+      }, {} as Record<TemplateCategory, number>)
+
+      return Object.entries(categoryCounts).map(([category, count]) => ({
+        category: category as TemplateCategory,
+        count
+      }))
+    } catch (error) {
+      console.error('Template service error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Duplicate a system template
+   */
+  async duplicateSystemTemplate(id: string, name: string): Promise<SystemTemplate> {
+    try {
+      // First get the original template
+      const original = await this.getSystemTemplate(id)
+      if (!original) {
+        throw new Error('Template not found')
+      }
+
+      // Create a copy with new name
+      const duplicateData: TemplateCreateData = {
+        name,
+        description: original.description || undefined,
+        category: original.category,
+        organization_types: original.organization_types || [],
+        compliance_framework: original.compliance_framework || undefined,
+        content: original.content,
+        variables: original.variables || [],
+        tags: original.tags || [],
+        is_starter: false
+      }
+
+      return await this.createSystemTemplate(duplicateData)
+    } catch (error) {
+      console.error('Template service error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get template usage statistics
+   */
+  async getTemplateStats(): Promise<{
+    total: number
+    byCategory: Record<string, number>
+    byStatus: Record<string, number>
+    thisMonth: number
+    lastMonth: number
+  }> {
+    try {
+      const { data, error } = await supabase
+        .from('system_templates')
+        .select('category, status, created_at')
+
+      if (error) {
+        console.error('Error fetching template stats:', error)
+        throw new Error(error.message)
+      }
+
+      const now = new Date()
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+
+      const stats = (data || []).reduce(
+        (acc, template) => {
+          acc.total++
+          acc.byCategory[template.category] = (acc.byCategory[template.category] || 0) + 1
+          acc.byStatus[template.status || 'active'] = (acc.byStatus[template.status || 'active'] || 0) + 1
+
+          const createdAt = new Date(template.created_at || '')
+          if (createdAt >= thisMonthStart) {
+            acc.thisMonth++
+          } else if (createdAt >= lastMonthStart && createdAt <= lastMonthEnd) {
+            acc.lastMonth++
+          }
+
+          return acc
+        },
+        {
+          total: 0,
+          byCategory: {} as Record<string, number>,
+          byStatus: {} as Record<string, number>,
+          thisMonth: 0,
+          lastMonth: 0
         }
-      }
-      
-      const updatedTemplate = {
-        ...mockTemplates[templateIndex],
-        ...updates,
-        updatedAt: new Date().toISOString()
-      }
-      
-      mockTemplates[templateIndex] = updatedTemplate
-      
-      return {
-        success: true,
-        data: updatedTemplate
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to update template'
-      }
-    }
-  }
+      )
 
-  // Delete template
-  static async deleteTemplate(id: string): Promise<ApiResponse<void>> {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 200))
-      
-      const templateIndex = mockTemplates.findIndex(t => t.id === id)
-      if (templateIndex === -1) {
-        return {
-          success: false,
-          error: 'Template not found'
-        }
-      }
-      
-      mockTemplates.splice(templateIndex, 1)
-      
-      return {
-        success: true
-      }
+      return stats
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete template'
-      }
-    }
-  }
-
-  // Search templates
-  static async searchTemplates(query: string): Promise<ApiResponse<TemplateWithCategory[]>> {
-    try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 150))
-      
-      const searchResults = mockTemplates
-        .filter(template => 
-          template.name.toLowerCase().includes(query.toLowerCase()) ||
-          template.description?.toLowerCase().includes(query.toLowerCase())
-        )
-        .map(addCategoryToTemplate)
-      
-      return {
-        success: true,
-        data: searchResults
-      }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to search templates'
-      }
+      console.error('Template service error:', error)
+      throw error
     }
   }
 }
+
+export const templateService = new TemplateService()

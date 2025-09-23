@@ -1,6 +1,7 @@
 // Layout components
 export { AuthHeader } from './AuthHeader'
 export { SuperAdminLayout } from './SuperAdminLayout'
+export { OrganizationLayout } from './OrganizationLayout'
 export { Container } from './Container'
 export { Grid, GridItem } from './Grid'
 export { Flex, FlexItem } from './Flex'

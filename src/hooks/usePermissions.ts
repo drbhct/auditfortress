@@ -1,4 +1,6 @@
+import React from 'react'
 import { useAuth } from './useAuth'
+import { useDevRole } from './useDevRole'
 import type { Permission } from '@/types'
 import {
   hasPermission,
@@ -20,6 +22,17 @@ import {
  */
 export const usePermissions = () => {
   const { profile, roles } = useAuth()
+  const { isDevMode, overrides, devRole } = useDevRole()
+
+  // Debug logging (disabled)
+  // React.useEffect(() => {
+  //   console.log('🔧 usePermissions debug:', {
+  //     isDevMode,
+  //     devRole,
+  //     overrides,
+  //     realIsSuperAdmin: isSuperAdmin(profile)
+  //   })
+  // }, [isDevMode, devRole, overrides, profile])
 
   // Permission checking methods
   const checkPermission = (permission: Permission): boolean => {
@@ -42,50 +55,50 @@ export const usePermissions = () => {
     return canAccessRoute(route, profile, roles)
   }
 
-  // Computed permission checks
+  // Computed permission checks with dev mode overrides
   const permissions = {
     // Document permissions
-    canReadDocuments: checkPermission(PERMISSIONS.READ_DOCUMENTS),
-    canWriteDocuments: checkPermission(PERMISSIONS.WRITE_DOCUMENTS),
-    canDeleteDocuments: checkPermission(PERMISSIONS.DELETE_DOCUMENTS),
+    canReadDocuments: isDevMode ? overrides.canCreateFromTemplate || true : checkPermission(PERMISSIONS.READ_DOCUMENTS),
+    canWriteDocuments: isDevMode ? overrides.canCreateFromTemplate || true : checkPermission(PERMISSIONS.WRITE_DOCUMENTS),
+    canDeleteDocuments: isDevMode ? overrides.canCreateFromTemplate || false : checkPermission(PERMISSIONS.DELETE_DOCUMENTS),
 
     // Template permissions
-    canManageTemplates: checkPermission(PERMISSIONS.MANAGE_TEMPLATES),
-    canCreateTemplates: checkPermission(PERMISSIONS.CREATE_TEMPLATES),
-    canEditTemplates: checkPermission(PERMISSIONS.EDIT_TEMPLATES),
-    canDeleteTemplates: checkPermission(PERMISSIONS.DELETE_TEMPLATES),
+    canManageTemplates: isDevMode ? false : checkPermission(PERMISSIONS.MANAGE_TEMPLATES),
+    canCreateTemplates: isDevMode ? false : checkPermission(PERMISSIONS.CREATE_TEMPLATES),
+    canEditTemplates: isDevMode ? false : checkPermission(PERMISSIONS.EDIT_TEMPLATES),
+    canDeleteTemplates: isDevMode ? false : checkPermission(PERMISSIONS.DELETE_TEMPLATES),
 
     // User management permissions
-    canManageUsers: checkPermission(PERMISSIONS.MANAGE_USERS),
-    canInviteUsers: checkPermission(PERMISSIONS.INVITE_USERS),
-    canEditUsers: checkPermission(PERMISSIONS.EDIT_USERS),
-    canDeleteUsers: checkPermission(PERMISSIONS.DELETE_USERS),
+    canManageUsers: isDevMode ? overrides.canManageTeam || false : checkPermission(PERMISSIONS.MANAGE_USERS),
+    canInviteUsers: isDevMode ? overrides.canManageTeam || false : checkPermission(PERMISSIONS.INVITE_USERS),
+    canEditUsers: isDevMode ? overrides.canManageTeam || false : checkPermission(PERMISSIONS.EDIT_USERS),
+    canDeleteUsers: isDevMode ? overrides.canManageTeam || false : checkPermission(PERMISSIONS.DELETE_USERS),
 
     // Organization permissions
-    canManageOrganization: checkPermission(PERMISSIONS.MANAGE_ORGANIZATION),
-    canEditOrganization: checkPermission(PERMISSIONS.EDIT_ORGANIZATION),
-    canViewOrganizationAnalytics: checkPermission(PERMISSIONS.VIEW_ORGANIZATION_ANALYTICS),
+    canManageOrganization: isDevMode ? overrides.canManageSettings || false : checkPermission(PERMISSIONS.MANAGE_ORGANIZATION),
+    canEditOrganization: isDevMode ? overrides.canManageSettings || false : checkPermission(PERMISSIONS.EDIT_ORGANIZATION),
+    canViewOrganizationAnalytics: isDevMode ? overrides.canViewAnalytics || false : checkPermission(PERMISSIONS.VIEW_ORGANIZATION_ANALYTICS),
 
     // Analytics permissions
-    canViewAnalytics: checkPermission(PERMISSIONS.VIEW_ANALYTICS),
-    canViewSystemAnalytics: checkPermission(PERMISSIONS.VIEW_SYSTEM_ANALYTICS),
+    canViewAnalytics: isDevMode ? overrides.canViewAnalytics || false : checkPermission(PERMISSIONS.VIEW_ANALYTICS),
+    canViewSystemAnalytics: isDevMode ? false : checkPermission(PERMISSIONS.VIEW_SYSTEM_ANALYTICS),
 
-    // System permissions
-    canManageSystem: checkPermission(PERMISSIONS.MANAGE_SYSTEM),
-    canManageSystemSettings: checkPermission(PERMISSIONS.MANAGE_SYSTEM_SETTINGS),
-    canManageFeatureFlags: checkPermission(PERMISSIONS.MANAGE_FEATURE_FLAGS),
-    canViewSystemLogs: checkPermission(PERMISSIONS.VIEW_SYSTEM_LOGS),
+    // System permissions (always false in dev mode when testing org users)
+    canManageSystem: isDevMode ? false : checkPermission(PERMISSIONS.MANAGE_SYSTEM),
+    canManageSystemSettings: isDevMode ? false : checkPermission(PERMISSIONS.MANAGE_SYSTEM_SETTINGS),
+    canManageFeatureFlags: isDevMode ? false : checkPermission(PERMISSIONS.MANAGE_FEATURE_FLAGS),
+    canViewSystemLogs: isDevMode ? false : checkPermission(PERMISSIONS.VIEW_SYSTEM_LOGS),
 
-    // SuperAdmin permissions
-    isSuperAdmin: checkPermission(PERMISSIONS.SUPERADMIN_ALL) || isSuperAdmin(profile),
+    // SuperAdmin permissions (with dev mode override support)
+    isSuperAdmin: isDevMode ? (overrides.isSuperAdmin || false) : (checkPermission(PERMISSIONS.SUPERADMIN_ALL) || isSuperAdmin(profile)),
   }
 
-  // Role checks
+  // Role checks with dev mode overrides
   const roleChecks = {
-    isSuperAdmin: checkRole(ROLES.SUPERADMIN) || isSuperAdmin(profile),
-    isAccountOwner: checkRole(ROLES.ACCOUNT_OWNER),
-    isComplianceOfficer: checkRole(ROLES.COMPLIANCE_OFFICER),
-    isTeamMember: checkRole(ROLES.TEAM_MEMBER),
+    isSuperAdmin: isDevMode ? (overrides.isSuperAdmin || false) : (checkRole(ROLES.SUPERADMIN) || isSuperAdmin(profile)),
+    isAccountOwner: isDevMode ? overrides.isAccountOwner : checkRole(ROLES.ACCOUNT_OWNER),
+    isComplianceOfficer: isDevMode ? overrides.isComplianceOfficer : checkRole(ROLES.COMPLIANCE_OFFICER),
+    isTeamMember: isDevMode ? overrides.isTeamMember : checkRole(ROLES.TEAM_MEMBER),
   }
 
   // Route access checks

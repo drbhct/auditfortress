@@ -1,10 +1,12 @@
 import React from 'react'
+import { OrganizationLayout } from '@/components/layout/OrganizationLayout'
 import { AppCard } from '@/components/ui/AppCard'
 import { ChartBarIcon } from '@heroicons/react/24/outline'
 
-export const AnalyticsPage: React.FC = () => {
+const AnalyticsPage: React.FC = () => {
   return (
-    <div className="p-6">
+    <OrganizationLayout>
+      <div className="p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
         <p className="text-gray-600">View detailed analytics and reports</p>
@@ -19,6 +21,9 @@ export const AnalyticsPage: React.FC = () => {
           </p>
         </div>
       </AppCard>
-    </div>
+      </div>
+    </OrganizationLayout>
   )
 }
+
+export default AnalyticsPage

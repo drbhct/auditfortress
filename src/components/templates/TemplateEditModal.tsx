@@ -26,15 +26,17 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { FormError } from '@/components/ui/FormError'
 import { useTemplateCategories } from '@/hooks/useTemplates'
 import { cn } from '@/utils/cn'
+import type { SystemTemplateWithMetrics } from '@/services/templateService'
 
-interface TemplateCreatorProps {
+interface TemplateEditModalProps {
+  template: SystemTemplateWithMetrics | null
   isOpen: boolean
   onClose: () => void
-  onSubmit: (template: TemplateFormData) => Promise<void>
+  onSubmit: (template: TemplateEditData) => Promise<void>
   isLoading?: boolean
 }
 
-export interface TemplateFormData {
+export interface TemplateEditData {
   name: string
   description: string
   categoryIds: string[]
@@ -75,7 +77,8 @@ const categoryDisplayNames: Record<string, string> = {
   incident_response: 'Incident Response'
 }
 
-export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
+export const TemplateEditModal: React.FC<TemplateEditModalProps> = ({
+  template,
   isOpen,
   onClose,
   onSubmit,
@@ -91,7 +94,7 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
       name: categoryDisplayNames[cat.category] || cat.category,
       count: cat.count
     })) : []
-  const [formData, setFormData] = useState<TemplateFormData>({
+  const [formData, setFormData] = useState<TemplateEditData>({
     name: '',
     description: '',
     categoryIds: [],
@@ -124,9 +127,21 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
     },
   })
 
-  // Reset form when modal opens/closes
+  // Reset form when modal opens/closes or template changes
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && template) {
+      const newFormData: TemplateEditData = {
+        name: template.name,
+        description: template.description || '',
+        categoryIds: [template.category.id], // Convert single category to array
+        organizationTypes: template.organizationTypes || [],
+        complianceFrameworks: template.complianceFrameworks || [],
+        content: template.content || '',
+      }
+      setFormData(newFormData)
+      setErrors({})
+      editor?.commands.setContent(template.content || '')
+    } else if (!isOpen) {
       setFormData({
         name: '',
         description: '',
@@ -138,7 +153,7 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
       setErrors({})
       editor?.commands.setContent('')
     }
-  }, [isOpen, editor])
+  }, [isOpen, template, editor])
 
   const validateForm = useCallback((): boolean => {
     const newErrors: Record<string, string> = {}
@@ -176,7 +191,7 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
   }, [formData])
 
   const handleSave = async () => {
-    if (!validateForm()) {
+    if (!template || !validateForm()) {
       return
     }
 
@@ -223,6 +238,8 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
     'employee_name',
   ]
 
+  if (!template) return null
+
   // Custom header content with Template Name field
   const customHeader = (
     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -259,7 +276,6 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
       {/* Custom Header */}
       {customHeader}
       
-      {/* Main Content */}
       <div className="px-6 py-4 space-y-6">
         {errors.general && (
           <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -326,7 +342,7 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
 
         {isPreviewMode ? (
           /* Full Document Preview */
-          <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+          <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-gray-900">Document Preview</h4>
               <AppButton
@@ -373,7 +389,7 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
         ) : (
           <>
             {/* Template Header Preview */}
-            <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-4">
               <h4 className="font-medium text-gray-900 mb-3">Template Header Preview</h4>
               <div className="bg-white border border-gray-300 rounded p-4 font-serif">
                 <div className="text-center mb-4">
@@ -408,9 +424,21 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
                   Preview
                 </AppButton>
               </div>
+            </div>
+          </>
+        )}
 
-              {/* Editor Toolbar */}
-              <div className="border border-gray-300 border-b-0 rounded-t-md bg-gray-50 p-2 flex items-center gap-1 flex-wrap">
+        {/* Content Editor (only show when NOT in preview mode) */}
+        {!isPreviewMode && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Policy Content (Body Only) <span className="text-red-500">*</span>
+              </label>
+            </div>
+
+            {/* Editor Toolbar */}
+            <div className="border border-gray-300 border-b-0 rounded-t-md bg-gray-50 p-2 flex items-center gap-1 flex-wrap">
                 <div className="flex items-center gap-1">
                   <AppButton
                     variant="outline"
@@ -496,32 +524,31 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
                 </AppButton>
               </div>
 
-              {/* Variables Toolbar */}
-              <div className="border border-gray-300 border-b-0 bg-blue-50 p-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-medium text-blue-700">Common Variables:</span>
-                  {commonVariables.map((variable) => (
-                    <AppButton
-                      key={variable}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => insertVariable(variable)}
-                      className="text-xs h-6 px-2 bg-white border-blue-200 text-blue-700 hover:bg-blue-50"
-                    >
-                      {`{{${variable}}}`}
-                    </AppButton>
-                  ))}
-                </div>
+            {/* Variables Toolbar */}
+            <div className="border border-gray-300 border-b-0 bg-blue-50 p-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-medium text-blue-700">Common Variables:</span>
+                {commonVariables.map((variable) => (
+                  <AppButton
+                    key={variable}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => insertVariable(variable)}
+                    className="text-xs h-6 px-2 bg-white border-blue-200 text-blue-700 hover:bg-blue-50"
+                  >
+                    {`{{${variable}}}`}
+                  </AppButton>
+                ))}
               </div>
-
-              {/* Editor */}
-              <div className="border border-gray-300 rounded-b-md">
-                <EditorContent editor={editor} />
-              </div>
-
-              {errors.content && <FormError message={errors.content} />}
             </div>
-          </>
+
+            {/* Editor */}
+            <div className="border border-gray-300 rounded-b-md">
+              <EditorContent editor={editor} />
+            </div>
+
+            {errors.content && <FormError message={errors.content} />}
+          </div>
         )}
       </div>
 
@@ -540,7 +567,7 @@ export const TemplateCreator: React.FC<TemplateCreatorProps> = ({
           className="flex items-center gap-2"
         >
           {isSaving && <LoadingSpinner size="sm" />}
-          Save Template
+          Update Template
         </AppButton>
       </div>
     </AppModal>

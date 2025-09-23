@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { SuperAdminLayout } from '@/components/layout/SuperAdminLayout'
+import { OrganizationLayout } from '@/components/layout/OrganizationLayout'
 import { AppButton } from '@/components/ui/AppButton'
 import {
   DocumentTextIcon,
@@ -9,11 +9,13 @@ import {
   TrashIcon,
   ShareIcon,
 } from '@heroicons/react/24/outline'
-import { DocumentList, DocumentEditor } from '@/components/documents'
+import { DocumentList, DocumentEditor, NewDocumentModal, type DocumentCreationData } from '@/components/documents'
 import { useDocuments } from '@/hooks/useDocuments'
+import { usePermissions } from '@/hooks/usePermissions'
+import { templateService } from '@/services/templateService'
 import type { Document } from '@/types'
 
-export const DocumentsPage: React.FC = () => {
+const DocumentsPage: React.FC = () => {
   const [isCreatingDocument, setIsCreatingDocument] = useState(false)
   const [isViewingDocument, setIsViewingDocument] = useState(false)
   const [isEditingDocument, setIsEditingDocument] = useState(false)
@@ -29,6 +31,10 @@ export const DocumentsPage: React.FC = () => {
     deleteDocument,
     updateDocumentStatus,
   } = useDocuments()
+  const { isAccountOwner, isComplianceOfficer, canWriteDocuments } = usePermissions()
+
+  // Check if user can create documents from templates
+  const canCreateFromTemplate = isAccountOwner || isComplianceOfficer
 
   // Handle document actions
   const handleCreateDocument = async (documentData: Partial<Document>) => {
@@ -130,6 +136,96 @@ export const DocumentsPage: React.FC = () => {
     console.log('Share document:', document.id)
   }
 
+  const handleCreateFromTemplate = async (templateId: string, documentData: DocumentCreationData) => {
+    try {
+      // Get the template content
+      const template = await templateService.getTemplateById(templateId)
+      if (!template) {
+        throw new Error('Template not found')
+      }
+
+      // Substitute template variables with organization data
+      let processedContent = template.content?.html || ''
+      
+      // Replace common variables
+      const variableMap = {
+        organization_name: documentData.organizationData.name,
+        organization_address: documentData.organizationData.address,
+        contact_email: documentData.organizationData.contactEmail,
+        contact_phone: documentData.organizationData.contactPhone,
+        effective_date: documentData.organizationData.effectiveDate,
+        last_updated: new Date().toLocaleDateString(),
+        version: '1.0',
+        department: documentData.organizationData.department || '',
+        compliance_framework: documentData.organizationData.complianceFramework || '',
+      }
+
+      // Replace all variables in the content
+      Object.entries(variableMap).forEach(([key, value]) => {
+        const regex = new RegExp(`{{${key}}}`, 'g')
+        processedContent = processedContent.replace(regex, value)
+      })
+
+      // Create the document
+      await createDocument({
+        title: documentData.title,
+        description: documentData.description || '',
+        organizationId: 'org-1', // This would come from user context
+        status: 'draft',
+        content: processedContent,
+        templateId: templateId,
+        tags: [template.category, 'from-template'],
+        metadata: {
+          category: template.category,
+          department: documentData.organizationData.department || '',
+          priority: 'medium',
+          confidentiality: 'internal',
+          complianceRequirements: template.compliance_framework ? [template.compliance_framework] : [],
+          fileSize: processedContent.length,
+          wordCount: processedContent.split(' ').length,
+          pageCount: Math.ceil(processedContent.split(' ').length / 250), // Rough estimate
+          templateId: templateId,
+          templateName: template.name,
+          organizationData: documentData.organizationData,
+        },
+      })
+
+      setIsCreatingDocument(false)
+    } catch (error) {
+      console.error('Failed to create document from template:', error)
+      // TODO: Show error message to user
+    }
+  }
+
+  const handleCreateBlankDocument = async (documentData: Partial<DocumentCreationData>) => {
+    try {
+      await createDocument({
+        title: documentData.title || 'Untitled Document',
+        description: documentData.description || '',
+        organizationId: 'org-1', // This would come from user context
+        status: 'draft',
+        content: '<p>Start writing your document...</p>',
+        tags: ['blank-document'],
+        metadata: {
+          category: '',
+          department: documentData.organizationData?.department || '',
+          priority: 'medium',
+          confidentiality: 'internal',
+          complianceRequirements: [],
+          fileSize: 0,
+          wordCount: 0,
+          pageCount: 1,
+          organizationData: documentData.organizationData,
+        },
+      })
+
+      setIsCreatingDocument(false)
+    } catch (error) {
+      console.error('Failed to create blank document:', error)
+      // TODO: Show error message to user
+    }
+  }
+
   const handleCloseModals = () => {
     setIsCreatingDocument(false)
     setIsViewingDocument(false)
@@ -138,25 +234,8 @@ export const DocumentsPage: React.FC = () => {
   }
 
   return (
-    <SuperAdminLayout>
+    <OrganizationLayout>
       <div className="p-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Documents</h1>
-              <p className="text-gray-600">Manage and collaborate on documents</p>
-            </div>
-
-            <AppButton
-              onClick={() => setIsCreatingDocument(true)}
-              className="flex items-center gap-2"
-            >
-              <PlusIcon className="h-4 w-4" />
-              New Document
-            </AppButton>
-          </div>
-        </div>
 
         {/* Error Display */}
         {error && (
@@ -177,22 +256,14 @@ export const DocumentsPage: React.FC = () => {
         />
 
         {/* Modals */}
-        {isCreatingDocument && (
-          <div className="fixed inset-0 z-50 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              {/* Backdrop */}
-              <div
-                className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-                onClick={handleCloseModals}
-              />
-
-              {/* Modal */}
-              <div className="relative w-full max-w-6xl bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
-                <DocumentEditor onSave={handleCreateDocument} onCancel={handleCloseModals} />
-              </div>
-            </div>
-          </div>
-        )}
+        <NewDocumentModal
+          isOpen={isCreatingDocument}
+          onClose={handleCloseModals}
+          onCreateFromTemplate={canCreateFromTemplate ? handleCreateFromTemplate : undefined}
+          onCreateBlank={handleCreateBlankDocument}
+          isLoading={false}
+          canCreateFromTemplate={canCreateFromTemplate}
+        />
 
         {isEditingDocument && selectedDocument && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -281,6 +352,8 @@ export const DocumentsPage: React.FC = () => {
           </div>
         )}
       </div>
-    </SuperAdminLayout>
+    </OrganizationLayout>
   )
 }
+
+export default DocumentsPage
