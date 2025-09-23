@@ -1,3 +1,5 @@
 export { DocumentCard } from './DocumentCard'
 export { DocumentList } from './DocumentList'
 export { DocumentEditor } from './DocumentEditor'
+export { NewDocumentModal } from './NewDocumentModal'
+export type { DocumentCreationData } from './NewDocumentModal'

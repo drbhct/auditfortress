@@ -1,16 +1,19 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
   PlusIcon,
   XMarkIcon,
   DocumentTextIcon,
-  AdjustmentsHorizontalIcon,
+  EyeIcon,
+  PencilIcon,
+  TrashIcon,
+  ShareIcon,
+  EllipsisVerticalIcon,
 } from '@heroicons/react/24/outline'
 import { AppButton } from '@/components/ui/AppButton'
 import { AppInput } from '@/components/ui/AppInput'
 import { AppSelect } from '@/components/ui/AppSelect'
-import { DocumentCard } from './DocumentCard'
 import { cn } from '@/utils/cn'
 import type { Document, DocumentStatus, DocumentPriority, ConfidentialityLevel } from '@/types'
 
@@ -63,6 +66,44 @@ const sortOptions = [
   { value: 'priority_asc', label: 'Priority Low-High' },
 ]
 
+// Utility functions
+const getStatusBadgeColor = (status: DocumentStatus) => {
+  switch (status) {
+    case 'draft':
+      return 'bg-gray-100 text-gray-800'
+    case 'in_review':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'pending_approval':
+      return 'bg-orange-100 text-orange-800'
+    case 'approved':
+      return 'bg-green-100 text-green-800'
+    case 'published':
+      return 'bg-blue-100 text-blue-800'
+    case 'archived':
+      return 'bg-gray-100 text-gray-600'
+    case 'rejected':
+      return 'bg-red-100 text-red-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+  
+  if (diffInDays === 0) {
+    return 'Today'
+  } else if (diffInDays === 1) {
+    return 'Yesterday'
+  } else if (diffInDays < 7) {
+    return `${diffInDays} days ago`
+  } else {
+    return date.toLocaleDateString()
+  }
+}
+
 export function DocumentList({
   documents,
   isLoading = false,
@@ -78,8 +119,22 @@ export function DocumentList({
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [confidentialityFilter, setConfidentialityFilter] = useState('all')
   const [sortBy, setSortBy] = useState('updated_desc')
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null)
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openActionMenuId) {
+        setOpenActionMenuId(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openActionMenuId])
 
   // Filter and sort documents
   const filteredAndSortedDocuments = useMemo(() => {
@@ -153,13 +208,27 @@ export function DocumentList({
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="h-10 bg-gray-200 rounded flex-1 animate-pulse"></div>
           <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
-          <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
         </div>
 
-        {/* Loading Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-80 bg-gray-200 rounded-lg animate-pulse"></div>
+        {/* Loading Table */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+            <div className="flex justify-between">
+              <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded w-8 animate-pulse"></div>
+            </div>
+          </div>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="px-6 py-4 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+                <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-4 animate-pulse"></div>
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -177,48 +246,12 @@ export function DocumentList({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* View Mode Toggle */}
-          <div className="flex items-center border border-gray-300 rounded-lg">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={cn(
-                'p-2 rounded-l-lg transition-colors',
-                viewMode === 'grid'
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={cn(
-                'p-2 rounded-r-lg transition-colors',
-                viewMode === 'list'
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {onCreateNew && (
-            <AppButton onClick={onCreateNew} className="flex items-center gap-2">
-              <PlusIcon className="h-4 w-4" />
-              New Document
-            </AppButton>
-          )}
-        </div>
+        {onCreateNew && (
+          <AppButton onClick={onCreateNew} className="flex items-center gap-2">
+            <PlusIcon className="h-4 w-4" />
+            New Document
+          </AppButton>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -309,7 +342,7 @@ export function DocumentList({
         )}
       </div>
 
-      {/* Documents Grid/List */}
+      {/* Documents Table */}
       {filteredAndSortedDocuments.length === 0 ? (
         <div className="text-center py-12">
           <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -327,23 +360,142 @@ export function DocumentList({
           )}
         </div>
       ) : (
-        <div
-          className={cn(
-            'gap-6',
-            viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'space-y-4'
-          )}
-        >
-          {filteredAndSortedDocuments.map(document => (
-            <DocumentCard
-              key={document.id}
-              document={document}
-              onView={onView}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onShare={onShare}
-              className={viewMode === 'list' ? 'flex-row' : ''}
-            />
-          ))}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          {/* Table Header */}
+          <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+            <div className="grid grid-cols-12 gap-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <div className="col-span-6">Title</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-3">Updated</div>
+              <div className="col-span-1"></div>
+            </div>
+          </div>
+
+          {/* Table Body */}
+          <div className="divide-y divide-gray-200">
+            {filteredAndSortedDocuments.map((document) => (
+              <div
+                key={document.id}
+                className="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer group"
+                onClick={() => onView?.(document)}
+              >
+                <div className="grid grid-cols-12 gap-4 items-center">
+                  {/* Title */}
+                  <div className="col-span-6">
+                    <div className="flex items-center space-x-3">
+                      <DocumentTextIcon className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-medium text-gray-900 truncate">
+                          {document.title}
+                        </h3>
+                        {document.description && (
+                          <p className="text-sm text-gray-500 truncate">
+                            {document.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div className="col-span-2">
+                    <span
+                      className={cn(
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize',
+                        getStatusBadgeColor(document.status)
+                      )}
+                    >
+                      {document.status.replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  {/* Updated */}
+                  <div className="col-span-3">
+                    <span className="text-sm text-gray-500">
+                      {formatDate(document.updatedAt)}
+                    </span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-1">
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setOpenActionMenuId(
+                            openActionMenuId === document.id ? null : document.id
+                          )
+                        }}
+                        className="p-1 text-gray-400 hover:text-gray-600 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <EllipsisVerticalIcon className="h-5 w-5" />
+                      </button>
+
+                      {/* Action Menu */}
+                      {openActionMenuId === document.id && (
+                        <div className="absolute right-0 top-8 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                          <div className="py-1">
+                            {onView && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onView(document)
+                                  setOpenActionMenuId(null)
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <EyeIcon className="h-4 w-4 mr-3" />
+                                View
+                              </button>
+                            )}
+                            {onEdit && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onEdit(document)
+                                  setOpenActionMenuId(null)
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <PencilIcon className="h-4 w-4 mr-3" />
+                                Edit
+                              </button>
+                            )}
+                            {onShare && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onShare(document)
+                                  setOpenActionMenuId(null)
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              >
+                                <ShareIcon className="h-4 w-4 mr-3" />
+                                Share
+                              </button>
+                            )}
+                            {onDelete && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onDelete(document)
+                                  setOpenActionMenuId(null)
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                              >
+                                <TrashIcon className="h-4 w-4 mr-3" />
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

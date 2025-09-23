@@ -18,7 +18,7 @@ import { useTemplates } from '@/hooks/useTemplates'
 import { usePolicies } from '@/hooks/usePolicies'
 import type { TemplateWithCategory, PolicyTemplate, GeneratedPolicy } from '@/types'
 
-export const TemplatesPage: React.FC = () => {
+const TemplatesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'templates' | 'categories' | 'policies'>('templates')
   const [isCreatingTemplate, setIsCreatingTemplate] = useState(false)
   const [isViewingTemplate, setIsViewingTemplate] = useState(false)
@@ -314,3 +314,5 @@ export const TemplatesPage: React.FC = () => {
     </SuperAdminLayout>
   )
 }
+
+export default TemplatesPage

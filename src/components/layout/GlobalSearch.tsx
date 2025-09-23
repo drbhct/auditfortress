@@ -5,7 +5,7 @@ import {
   DocumentTextIcon,
   UserIcon,
   BuildingOfficeIcon,
-  TemplateIcon,
+  DocumentDuplicateIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 
@@ -69,7 +69,7 @@ const mockSearchResults: SearchResult[] = [
     title: 'HIPAA Privacy Policy Template',
     description: 'Template for creating HIPAA privacy policies',
     path: '/templates/5',
-    icon: TemplateIcon,
+    icon: DocumentDuplicateIcon,
     metadata: { category: 'HIPAA Privacy', status: 'published' },
   },
   {

@@ -4,6 +4,7 @@ import { AppButton } from '@/components/ui/AppButton'
 import { useAuth } from '@/hooks/useAuth'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAnalytics } from '@/hooks/useAnalytics'
+import { OrganizationLayout } from '@/components/layout/OrganizationLayout'
 import {
   StatsCard,
   DocumentStatsCard,
@@ -28,7 +29,7 @@ import {
   Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
 
-export const DashboardPage: React.FC = () => {
+const DashboardPage: React.FC = () => {
   const navigate = useNavigate()
   const { userDisplayName, logout, profile, organization } = useAuth()
   const { isSuperAdmin, isAccountOwner, canManageTemplates } = usePermissions()
@@ -121,35 +122,8 @@ export const DashboardPage: React.FC = () => {
   const complianceItems = generateMockComplianceItems()
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="text-gray-600">Welcome back, {userDisplayName}!</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <AppButton
-                variant="outline"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="flex items-center gap-2"
-              >
-                <ArrowPathIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </AppButton>
-              <AppButton onClick={handleLogout} variant="outline">
-                Sign Out
-              </AppButton>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0 space-y-6">
+    <OrganizationLayout>
+      <div className="p-6 space-y-6">
           {/* Error States */}
           {(metricsError || activitiesError) && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -279,29 +253,9 @@ export const DashboardPage: React.FC = () => {
             </div>
           )}
 
-          {/* Debug Info (remove in production) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-8 bg-gray-100 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Debug Info:</h4>
-              <pre className="text-xs text-gray-600 overflow-auto">
-                {JSON.stringify(
-                  {
-                    isSuperAdmin,
-                    isAccountOwner,
-                    canManageTemplates,
-                    organizationStatus: organization?.status,
-                    organizationType: organization?.type,
-                    metricsLoaded: !!metrics,
-                    activitiesLoaded: activities.length > 0,
-                  },
-                  null,
-                  2
-                )}
-              </pre>
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+    </OrganizationLayout>
   )
 }
+
+export default DashboardPage

@@ -2,19 +2,19 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import TextStyle from '@tiptap/extension-text-style'
-import Color from '@tiptap/extension-color'
-import BulletList from '@tiptap/extension-bullet-list'
-import OrderedList from '@tiptap/extension-ordered-list'
-import ListItem from '@tiptap/extension-list-item'
+// import TextStyle from '@tiptap/extension-text-style'
+// import Color from '@tiptap/extension-color'
+// import BulletList from '@tiptap/extension-bullet-list'
+// import OrderedList from '@tiptap/extension-ordered-list'
+// import ListItem from '@tiptap/extension-list-item'
 import {
   BoldIcon,
   ItalicIcon,
   ListBulletIcon,
-  ListNumberedIcon,
-  Heading1Icon,
-  Heading2Icon,
-  Heading3Icon,
+  QueueListIcon as NumberedListIcon,
+  Bars3Icon as H1Icon,
+  Bars2Icon as H2Icon,
+  MinusIcon as H3Icon,
   CodeBracketIcon,
   EyeIcon,
   EyeSlashIcon,
@@ -71,11 +71,11 @@ export function TemplateEditor({
         placeholder:
           'Start writing your template content... Use {{variable_name}} for dynamic content.',
       }),
-      TextStyle,
-      Color,
-      BulletList,
-      OrderedList,
-      ListItem,
+      // TextStyle,
+      // Color,
+      // BulletList,
+      // OrderedList,
+      // ListItem,
     ],
     content: template?.content || '',
     editorProps: {
@@ -436,7 +436,7 @@ export function TemplateEditor({
                   onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
                   className={cn(editor.isActive('heading', { level: 1 }) && 'bg-gray-100')}
                 >
-                  <Heading1Icon className="h-4 w-4" />
+                  <H1Icon className="h-4 w-4" />
                 </AppButton>
 
                 <AppButton
@@ -445,7 +445,7 @@ export function TemplateEditor({
                   onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
                   className={cn(editor.isActive('heading', { level: 2 }) && 'bg-gray-100')}
                 >
-                  <Heading2Icon className="h-4 w-4" />
+                  <H2Icon className="h-4 w-4" />
                 </AppButton>
 
                 <AppButton
@@ -454,7 +454,7 @@ export function TemplateEditor({
                   onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
                   className={cn(editor.isActive('heading', { level: 3 }) && 'bg-gray-100')}
                 >
-                  <Heading3Icon className="h-4 w-4" />
+                  <H3Icon className="h-4 w-4" />
                 </AppButton>
 
                 <div className="w-px h-6 bg-gray-300 mx-2" />
@@ -474,7 +474,7 @@ export function TemplateEditor({
                   onClick={() => editor.chain().focus().toggleOrderedList().run()}
                   className={cn(editor.isActive('orderedList') && 'bg-gray-100')}
                 >
-                  <ListNumberedIcon className="h-4 w-4" />
+                  <NumberedListIcon className="h-4 w-4" />
                 </AppButton>
 
                 <div className="w-px h-6 bg-gray-300 mx-2" />

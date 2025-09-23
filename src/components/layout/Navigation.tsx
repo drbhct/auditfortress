@@ -16,7 +16,7 @@ import {
   BuildingOfficeIcon,
   UsersIcon,
   ChartBarIcon,
-  TemplateIcon,
+  DocumentDuplicateIcon,
   ShieldCheckIcon,
 } from '@heroicons/react/24/outline'
 
@@ -93,7 +93,7 @@ const navigationItems: NavigationItem[] = [
         id: 'superadmin-templates',
         label: 'Templates',
         path: '/superadmin/templates',
-        icon: TemplateIcon,
+        icon: DocumentDuplicateIcon,
         requiresSuperAdmin: true,
       },
     ],

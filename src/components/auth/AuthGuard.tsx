@@ -50,7 +50,8 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({
     if (fallback) {
       return <>{fallback}</>
     }
-    return <Navigate to="/unauthorized" replace />
+    // Redirect non-superadmins to their appropriate dashboard
+    return <Navigate to="/dashboard" replace />
   }
 
   // Check permission requirements
@@ -88,11 +89,13 @@ export function withAuthGuard<P extends object>(
   Component: React.ComponentType<P>,
   guardProps: Omit<AuthGuardProps, 'children'>,
 ) {
-  const WrappedComponent = (props: P) => (
-    <AuthGuard {...guardProps}>
-      <Component {...props} />
-    </AuthGuard>
-  )
+  function WrappedComponent(props: P) {
+    return (
+      <AuthGuard {...guardProps}>
+        <Component {...props} />
+      </AuthGuard>
+    )
+  }
 
   WrappedComponent.displayName = `withAuthGuard(${Component.displayName || Component.name})`
 

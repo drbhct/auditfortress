@@ -106,15 +106,15 @@ export const useAuthStore = create<AuthStore>()(
             // Record successful attempt
             RateLimiter.recordLoginAttempt(credentials.email, true)
 
-            // Update login tracking with IP
-            await updateLoginTracking(data.user.id, clientIP)
+            // Update login tracking with IP (non-blocking)
+            updateLoginTracking(data.user.id, clientIP).catch(console.warn)
 
-            // Log login activity with security context
-            await logProfileActivity(data.user.id, 'login', {
+            // Log login activity with security context (non-blocking)
+            logProfileActivity(data.user.id, 'login', {
               method: 'email_password',
               ip: clientIP,
               userAgent: userAgent,
-            })
+            }).catch(console.warn)
 
             // Fetch and set user profile data
             await get().refreshUserData()
@@ -148,8 +148,8 @@ export const useAuthStore = create<AuthStore>()(
           const { user } = get()
 
           if (user) {
-            // Log logout activity
-            await logProfileActivity(user.id, 'logout', { method: 'manual' })
+            // Log logout activity (non-blocking)
+            logProfileActivity(user.id, 'logout', { method: 'manual' }).catch(console.warn)
           }
 
           await supabase.auth.signOut()
@@ -193,7 +193,7 @@ export const useAuthStore = create<AuthStore>()(
             // Profile will be created automatically by database trigger
             // Log signup activity (only if user is confirmed)
             if (data.user.email_confirmed_at) {
-              await logProfileActivity(data.user.id, 'signup', { method: 'email_password' })
+              logProfileActivity(data.user.id, 'signup', { method: 'email_password' }).catch(console.warn)
             }
           }
 
@@ -257,10 +257,10 @@ export const useAuthStore = create<AuthStore>()(
 
           set({ profile: data })
 
-          // Log profile update activity
-          await logProfileActivity(user.id, 'profile_update', {
+          // Log profile update activity (non-blocking)
+          logProfileActivity(user.id, 'profile_update', {
             updated_fields: Object.keys(updates),
-          })
+          }).catch(console.warn)
 
           return { success: true }
         } catch (error) {
@@ -316,8 +316,8 @@ export const useAuthStore = create<AuthStore>()(
       name: 'auth-storage',
       partialize: state => ({
         // Only persist essential data, not sensitive information
+        // Don't persist isAuthenticated - it should be computed fresh each time
         user: state.user ? { id: state.user.id, email: state.user.email } : null,
-        isAuthenticated: state.isAuthenticated,
       }),
     }
   )
@@ -326,6 +326,19 @@ export const useAuthStore = create<AuthStore>()(
 // Flag to prevent multiple initializations
 let isInitializing = false
 let isInitialized = false
+
+// Reset initialization flags (useful for debugging)
+export const resetInitializationFlags = () => {
+  isInitializing = false
+  isInitialized = false
+  console.log('Reset initialization flags')
+}
+
+// Helper function to clear persisted auth data
+export const clearPersistedAuth = () => {
+  localStorage.removeItem('auth-storage')
+  console.log('Cleared persisted auth data')
+}
 
 // Initialize auth state on app start
 export const initializeAuth = async () => {
@@ -338,6 +351,13 @@ export const initializeAuth = async () => {
 
   try {
     console.log('Initializing auth...')
+    
+    // Clear any stale persisted state to ensure fresh initialization
+    const persistedData = localStorage.getItem('auth-storage')
+    if (persistedData) {
+      console.log('Found persisted auth data, checking if stale...')
+    }
+    
     const {
       data: { session },
       error,
@@ -349,6 +369,8 @@ export const initializeAuth = async () => {
       await useAuthStore.getState().refreshUserData()
     } else {
       console.log('No user session found')
+      // Explicitly reset all auth state
+      useAuthStore.getState().reset()
     }
 
     console.log('Auth initialization complete')
@@ -374,4 +396,29 @@ if (!authListenerSetup) {
     }
   })
   authListenerSetup = true
+}
+
+// Debug helper for browser console
+if (typeof window !== 'undefined') {
+  (window as any).debugAuth = () => {
+    const state = useAuthStore.getState()
+    console.log('🐛 Auth Debug State:', {
+      isAuthenticated: state.isAuthenticated,
+      isLoading: state.isLoading,
+      hasUser: !!state.user,
+      hasProfile: !!state.profile,
+      isSuperAdmin: state.isSuperAdmin,
+      user: state.user,
+      profile: state.profile
+    })
+    return state
+  }
+  
+  (window as any).forceAuthReset = () => {
+    console.log('🔄 Force resetting auth...')
+    clearPersistedAuth()
+    resetInitializationFlags()
+    useAuthStore.getState().reset()
+    console.log('✅ Auth reset complete')
+  }
 }
